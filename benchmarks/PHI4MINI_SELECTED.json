@@ -1,0 +1,59 @@
+{
+  "source": "microsoft/Phi-4-mini-instruct",
+  "source_gguf_sha256": "4a967298f4692c596f78c3e19d0f0e6f69f56e353e61389d738bb41b42d784a1",
+  "search_plan_sha256": "1dd63ac44544d026410d94439fb857fedc08de249cfc62b5b294602e2295f32c",
+  "frozen_task_suite_sha256": "8853edf88434407f660c461a596350ecfcd21b8ceb1bd73c2ec8cdcba2de7b86",
+  "source_selection": "q4tune optimizer selection based on 2 tuning corpora only; no holdout or task evaluation",
+  "trial_count": 24,
+  "verified_candidates": 4,
+  "search_status": "passes_tuning_domains",
+  "baseline_bytes": 2166699840,
+  "budget_bytes": 2175366639,
+  "recipe_file": "recipes/phi4mini-v07-6tensor.txt",
+  "recipe_sha256": "227a610d0466c4da3aca1fbf202770c7fc5d4d8c5e0608a19b7cdbfc99ed11e5",
+  "selected": {
+    "edits": [
+      [
+        "blk.0.attn_qkv.weight",
+        "Q3_K"
+      ],
+      [
+        "blk.2.attn_qkv.weight",
+        "Q3_K"
+      ],
+      [
+        "blk.0.ffn_down.weight",
+        "Q5_K"
+      ],
+      [
+        "blk.1.ffn_down.weight",
+        "Q5_K"
+      ],
+      [
+        "blk.3.ffn_down.weight",
+        "Q5_K"
+      ],
+      [
+        "blk.7.ffn_down.weight",
+        "Q5_K"
+      ]
+    ],
+    "observed": {
+      "wiki_train": {
+        "kld": 0.419072,
+        "ratio": 0.9693336108990818,
+        "top": 66.142,
+        "top_delta_pp": 2.4939999999999927
+      },
+      "code_train": {
+        "kld": 0.173133,
+        "ratio": 0.8591440963090146,
+        "top": 85.564,
+        "top_delta_pp": 2.2309999999999945
+      }
+    },
+    "actual_bytes": 2175104832,
+    "gguf_sha256": "e406e04c7f8b4cc74942d126436595f5b11bdfa1f1125ad7578ff0a2df985661",
+    "path": "/home/didiao1573/chatgpt-workspace/q4fit/work/phi4mini/search/verified-2.gguf"
+  }
+}
