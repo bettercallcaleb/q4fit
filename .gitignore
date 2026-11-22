@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+work/
+*.gguf
+*.logits
+*.log
+*.manifest.json
+*.baseline.json
+*.baseline.log
+*-recipe/

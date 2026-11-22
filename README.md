@@ -1,0 +1,50 @@
+# Q4Fit
+
+Experimental CLI workbench for BF16-referenced per-tensor GGUF mixed-precision quantization. The tool uses upstream llama.cpp quantizer and perplexity evaluator, and stores auditable tensor recipes and SHA256 receipts.
+
+Implemented in v0.1: inspect, build, baseline, eval, probe, and measured group-level search under a byte budget. This is an experiment framework, not a claim of new quantization math.
+
+## Setup
+
+Python 3.10+, gguf, a BF16 or F16 GGUF source, and recent llama.cpp llama-quantize and llama-perplexity binaries supporting the model.
+
+~~~bash
+python3 -m pip install -e .
+export BF16=/models/model-bf16.gguf
+export QUANT=/opt/llama.cpp/build/bin/llama-quantize
+export PPL=/opt/llama.cpp/build/bin/llama-perplexity
+q4fit inspect --model "$BF16"
+q4fit build --model "$BF16" --quantizer "$QUANT" --output work/plain-q4.gguf
+q4fit baseline --model "$BF16" --corpus corpus/smoke.txt --ppl "$PPL" --output work/bf16-reference.logits --ctx 256 --chunks 1
+q4fit eval --model work/plain-q4.gguf --corpus corpus/smoke.txt --ppl "$PPL" --reference work/bf16-reference.logits --log work/plain-q4-eval.log
+q4fit probe --model "$BF16" --corpus corpus/smoke.txt --reference work/bf16-reference.logits --quantizer "$QUANT" --ppl "$PPL" --workdir work/probes --name attn-v-q5 --set '\.attn_v\.weight$=Q5_K'
+~~~
+
+## Measured search at a fixed size
+
+A measured search probes one tensor family and bit type at a time against the same BF16 logits, estimates a budget-constrained recipe from the observed changes, and **re-evaluates the combined recipe** before claiming improvement. Delta-KLD estimates are not additive in general; the validated result is the real outcome. A short run is only a smoke test.
+
+~~~bash
+q4fit search --model "$BF16" --base-model work/plain-q4.gguf --base-log work/plain-q4-eval.log \
+  --corpus corpus/smoke.txt --reference work/bf16-reference.logits --workdir work/search \
+  --target-gib 2.12 --groups ffn_down,ffn_gate --types Q3_K,Q5_K --max-trials 4 \
+  --quantizer "$QUANT" --ppl "$PPL"
+~~~
+
+The search saves each trial's results, final recipe, search-report.json and full evaluation logs. It deletes only temporary GGUF candidates. Output is either a validated best.gguf or a report that no improvement was found among measured options. An absent improvement is a legitimate result.
+
+## Tensor control
+
+Every eligible matrix tensor can be individually assigned through repeatable REGEX=TYPE rules. Exact names are matched using regular expressions; --set '^blk\.0\.attn_v\.weight$=Q6_K' changes only one matching tensor. --set '\.ffn_down\.weight$=Q5_K' changes an entire family. --imatrix is optional, and does not control the allocation policy.
+
+Supported target types: Q3_K, Q4_K, Q5_K, Q6_K, Q8_0, F16, BF16. Only compatible dense 2D tensors are forced to a new type. Other tensors remain governed by llama.cpp.
+
+A probe re-quantizes from the BF16 source, never from an already lossy GGUF, evaluates against BF16 logits, and deletes only its own disposable candidate unless --keep is specified. Receipts, binary paths, config, hashes and raw logs are retained.
+
+## Objective and caveats
+
+Minimize actual next-token KL divergence to BF16 under an output byte budget, not just minimize reconstruction MSE. A single one-chunk, 256-token smoke test checks implementation only. Substantive quality claims need frozen independent multilingual/code/reasoning validation sets and multiple seeds. Model size is not peak VRAM.
+
+Related open projects: llama.cpp, Intel AutoRound, OpenDynamicGGUF, advanced-gguf-quantizer, FIT-GGUF, shoehorn. Q4Fit is not represented as novel algorithmic research. No model weights or third-party training datasets are redistributed.
+
+MIT licensed.
