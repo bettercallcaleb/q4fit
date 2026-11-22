@@ -6,7 +6,9 @@ Experimental CLI workbench for BF16-referenced per-tensor GGUF mixed-precision q
 
 **Updated Qwen3-4B result:** A conservative early-FFN-Down Q5_K upgrade (18 tensors, otherwise Q4_K) has now improved BF16 KLD on two WikiText test segments while adding 2.47% file size, at roughly 1.6% lower single-GPU decode throughput. It is **not within the original 2.12 GiB hard budget**. See [expanded results](benchmarks/QWEN3_4B_EXPANDED.md) and the published [18-tensor recipe](recipes/qwen3-4b-early-down-q5.txt).
 
-Implemented: inspect, build, baseline, eval, probe, group search, and experimental multi-domain layer-range search. This is an experiment framework, not a claim of new quantization math.
+Implemented: inspect, build, BF16 baseline/eval, per-tensor probe, group search, multi-domain layer-range search, and v0.3 **prequantized tensor-bank caching, fast GGUF composition, and individual tensor sensitivity scan**. This is an experiment framework, not a claim of new quantization math.
+
+**v0.3 verified:** Precomputed Q3_K/Q4_K/Q5_K tensor banks assembled two Qwen3-4B mixed-bit GGUF models **byte-for-byte identical** to independent upstream llama.cpp quantizations. Fast composition of a ~2.2 GB candidate took 1.56 seconds vs 30–40 seconds for direct quantization (excluding one-time bank creation and BF16 evaluation). See [Cache design and CLI](docs/CACHE.md) and [measurement receipts](benchmarks/QWEN3_4B_CACHE.md).
 
 ## Setup
 

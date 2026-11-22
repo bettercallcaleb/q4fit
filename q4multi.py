@@ -76,6 +76,20 @@ def run(config_path, workdir, max_trials=8, keep_trials=False):
     sha_source = digest(source)
     if original["source_sha256"] != sha_source or original["default"] != "Q4_K" or original["overrides"]:
         raise ValueError("Plain Q4 baseline must be generated from this BF16 file")
+    cache_path = cfg.get("cache_index")
+    if cache_path:
+        from q4cache import compose, load_index
+        cache_path = Path(cache_path).resolve()
+        index = load_index(cache_path)
+        if index["source_sha256"] != sha_source or index["banks"]["Q4_K"]["sha256"] != digest(baseline):
+            raise ValueError("Cache bank provenance does not match BF16 and Q4 baseline")
+        if index["imatrix_sha256"] != (digest(cfg["imatrix"]) if cfg.get("imatrix") else None):
+            raise ValueError("Cache imatrix mismatch")
+    def create_candidate(path, rules, final=False):
+        if cache_path:
+            compose(cache_path, path, changes=rules, verify_output=final, hash_output=final)
+        else:
+            build(source, path, cfg["quantizer"], "Q4_K", rules, cfg.get("imatrix"), cfg.get("threads", 12))
     domains = cfg["domains"]
     if len(domains) < 2 or len({d["name"] for d in domains}) != len(domains):
         raise ValueError("Need at least two distinct measured domains")
@@ -104,6 +118,7 @@ def run(config_path, workdir, max_trials=8, keep_trials=False):
         "target_gib": cfg["target_gib"],
         "max_top_drop_pp": cfg.get("max_top_drop_pp", 0.5),
         "imatrix_sha": digest(cfg["imatrix"]) if cfg.get("imatrix") else None,
+        "cache_index_sha256": digest(cache_path) if cache_path else None,
         "domains": [{"name": d["name"], "corpus_sha": digest(d["corpus"]), "reference_sha": digest(d["reference"]), "base_log_sha": digest(d["base_log"]), "ctx": d["ctx"], "chunks": d["chunks"]} for d in domains],
         "quantizer": str(Path(cfg["quantizer"]).resolve()),
         "ppl": str(Path(cfg["ppl"]).resolve()),
@@ -131,7 +146,7 @@ def run(config_path, workdir, max_trials=8, keep_trials=False):
         if shutil.disk_usage(workdir).free < baseline.stat().st_size + 4 * 2 ** 30:
             raise RuntimeError("Not enough free disk for a disposable candidate")
         print("TRIAL", group, typ, "delta_MiB", round(delta / 2 ** 20, 1), flush=True)
-        build(source, candidate, cfg["quantizer"], "Q4_K", [group_regex[group] + "=" + typ], cfg.get("imatrix"), cfg.get("threads", 12))
+        create_candidate(candidate, [group_regex[group] + "=" + typ])
         try:
             scores = {}
             for d in domains:
@@ -160,7 +175,7 @@ def run(config_path, workdir, max_trials=8, keep_trials=False):
         result.update(estimate={"worst_ratio": estimated_worst, "mean_ratio": estimated_mean, "bytes": estimated_bytes, "by_domain": predicted}, chosen=items)
         if changes:
             winner = workdir / "best.gguf"
-            build(source, winner, cfg["quantizer"], "Q4_K", changes, cfg.get("imatrix"), cfg.get("threads", 12))
+            create_candidate(winner, changes, final=True)
             observed = {}
             for d in domains:
                 out = workdir / ("best-" + d["name"] + ".eval.log")
