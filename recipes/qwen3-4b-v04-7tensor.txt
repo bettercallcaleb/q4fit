@@ -1,0 +1,7 @@
+blk.0.attn_output.weight=q3_k
+blk.1.ffn_down.weight=q5_k
+blk.1.ffn_up.weight=q3_k
+blk.11.ffn_down.weight=q5_k
+blk.16.ffn_down.weight=q5_k
+blk.5.attn_q.weight=q3_k
+blk.6.ffn_down.weight=q5_k

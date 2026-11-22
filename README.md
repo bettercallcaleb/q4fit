@@ -4,11 +4,15 @@ Experimental CLI workbench for BF16-referenced per-tensor GGUF mixed-precision q
 
 **Important result:** The original one-chunk v0.1 optimization **failed to generalize** on a larger WikiText-2 test. At comparable size, v0.1 mixed KLD was 0.125771 versus plain Q4_K 0.110148 (lower is better). See [Benchmark protocol](docs/PROTOCOL.md) for the falsification and larger matched evaluations. Never cite the small-sample result alone as evidence of improvement.
 
-**Updated Qwen3-4B result:** A conservative early-FFN-Down Q5_K upgrade (18 tensors, otherwise Q4_K) has now improved BF16 KLD on two WikiText test segments while adding 2.47% file size, at roughly 1.6% lower single-GPU decode throughput. It is **not within the original 2.12 GiB hard budget**. See [expanded results](benchmarks/QWEN3_4B_EXPANDED.md) and the published [18-tensor recipe](recipes/qwen3-4b-early-down-q5.txt).
+**Earlier v0.3 above-budget Pareto result:** A conservative early-FFN-Down Q5_K upgrade (18 tensors, otherwise Q4_K) has now improved BF16 KLD on two WikiText test segments while adding 2.47% file size, at roughly 1.6% lower single-GPU decode throughput. It is **not within the original 2.12 GiB hard budget**. See [expanded results](benchmarks/QWEN3_4B_EXPANDED.md) and the published [18-tensor recipe](recipes/qwen3-4b-early-down-q5.txt).
 
 Implemented: inspect, build, BF16 baseline/eval, per-tensor probe, group search, multi-domain layer-range search, and v0.3 **prequantized tensor-bank caching, fast GGUF composition, and individual tensor sensitivity scan**. This is an experiment framework, not a claim of new quantization math.
 
 **v0.3 verified:** Precomputed Q3_K/Q4_K/Q5_K tensor banks assembled two Qwen3-4B mixed-bit GGUF models **byte-for-byte identical** to independent upstream llama.cpp quantizations. Fast composition of a ~2.2 GB candidate took 1.56 seconds vs 30–40 seconds for direct quantization (excluding one-time bank creation and BF16 evaluation). See [Cache design and CLI](docs/CACHE.md) and [measurement receipts](benchmarks/QWEN3_4B_CACHE.md).
+
+**v0.4:** `q4fit-tune` performs multi-domain per-tensor scans and approximates byte-budgeted mixed-bit allocation using a beam search. It ranks by worst relative BF16 KL across tuning domains, then independently rebuilds and evaluates combined tensors with actual size and top-token gates. [Methodology and CLI](docs/TENSOR_OPTIMIZER.md). A standalone holdout is mandatory before claiming generalization.
+
+**v0.4 Qwen3-4B measured result:** After a 54-tensor scan, a **seven-tensor Q3_K/Q5_K mix** remained within the original **2.12 GiB** constraint and reduced BF16 KLD on two frozen, independent WikiText/code holdouts by **16.0%/13.7%** versus pure Q4_K. Its bytes were identical to an independent direct llama.cpp quantization. A larger standard Q4_K_S model had worse mean KLD on both sampled holdouts, though some tail/top-token measures favored Q4_K_S. Decode speed on RTX 4090 was approximately **0.4% below** pure Q4_K. [Full report](benchmarks/QWEN3_4B_TENSOR_SEARCH.md), [54 measured tensor probes](benchmarks/QWEN3_4B_TENSOR_SWEEP.csv), [exact recipe](recipes/qwen3-4b-v04-7tensor.txt). One-model PoC only; no broad capability claim.
 
 ## Setup
 

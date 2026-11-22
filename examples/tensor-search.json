@@ -1,0 +1,51 @@
+{
+  "cache_index": "/work/cache/index.json",
+  "base_model": "/work/plain-q4.gguf",
+  "ppl": "/opt/llama.cpp/build/bin/llama-perplexity",
+  "target_gib": 2.12,
+  "max_top_drop_pp": 0.5,
+  "domains": [
+    {
+      "name": "wiki_valid",
+      "corpus": "/work/wiki_valid_raw.txt",
+      "reference": "/work/wiki-valid-bf16.logits",
+      "base_log": "/work/wiki-valid-plain-q4.log",
+      "ctx": 512,
+      "chunks": 16
+    },
+    {
+      "name": "code",
+      "corpus": "/work/code.txt",
+      "reference": "/work/code-bf16.logits",
+      "base_log": "/work/code-plain-q4.log",
+      "ctx": 512,
+      "chunks": 8
+    }
+  ],
+  "probes": [
+    {
+      "name": "blk.1.ffn_down.weight",
+      "type": "Q5_K"
+    },
+    {
+      "name": "blk.6.ffn_down.weight",
+      "type": "Q5_K"
+    },
+    {
+      "name": "blk.0.ffn_gate.weight",
+      "type": "Q3_K"
+    },
+    {
+      "name": "blk.1.ffn_gate.weight",
+      "type": "Q3_K"
+    },
+    {
+      "name": "blk.0.attn_q.weight",
+      "type": "Q3_K"
+    },
+    {
+      "name": "blk.1.attn_output.weight",
+      "type": "Q3_K"
+    }
+  ]
+}
