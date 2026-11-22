@@ -96,14 +96,18 @@ def parse_code(response):
     return m.group(1).strip() if m else response.strip()
 
 
-def start_server(server, model, logpath, port):
+def start_server(server, model, logpath, port, thinking=None, seed=20261123):
     cmd = [
         str(server), "-m", str(model), "-ngl", "999", "-c", "4096", "-np", "1",
         "-t", "8", "-tb", "8", "--split-mode", "none", "--main-gpu", "0",
-        "--jinja", "--reasoning", "off", "--chat-template-kwargs", '{"enable_thinking":false}',
+        "--jinja",
         "--host", "127.0.0.1", "--port", str(port),
-        "--no-webui", "--no-context-shift", "--seed", "20261123",
+        "--no-webui", "--no-context-shift", "--seed", str(seed),
     ]
+    if thinking and thinking.get("enabled"):
+        cmd += ["--reasoning", "on", "--reasoning-budget", str(thinking["reasoning_budget"]), "--reasoning-format", thinking["reasoning_format"]]
+    else:
+        cmd += ["--reasoning", "off", "--chat-template-kwargs", '{"enable_thinking":false}']
     log = Path(logpath).open("w", encoding="utf-8")
     proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, env=dict(os.environ, CUDA_VISIBLE_DEVICES="0"))
     root = f"http://127.0.0.1:{port}"
@@ -146,10 +150,12 @@ def run(args):
         "suite_sha256": manifest["frozen_tasks_sha256"],
         "manifest_sha256": digest(args.manifest),
         "server": str(Path(args.server).resolve()),
-        "temperature": 0, "top_k": 1, "seed": 20261123,
-        "enable_thinking": False, "system_prompt": SYSTEM,
+        "temperature": manifest["decode"]["temperature"], "top_k": manifest["decode"]["top_k"], "seed": manifest["decode"]["seed"],
+        "enable_thinking": bool(manifest.get("thinking_mode", {}).get("enabled")), "system_prompt": SYSTEM,
         "container": CONTAINER, "code_timeout_seconds": 9,
     }
+    if manifest.get("thinking_mode", {}).get("enabled"):
+        receipt.update({"thinking_config": manifest["thinking_mode"], "decode": manifest["decode"]})
     receipt_path = folder / (args.name + "-receipt.json")
     if receipt_path.exists() and json.loads(receipt_path.read_text(encoding="utf-8")) != receipt:
         raise ValueError("Existing receipt differs; cannot mix model or benchmark")
@@ -162,14 +168,15 @@ def run(args):
     print("MODEL", args.name, "SHA256", receipt["model_sha256"], "REMAINING", len(tasklist), flush=True)
     if not tasklist:
         return
-    proc, log, url = start_server(args.server, model, folder / (args.name + "-server.log"), args.port)
+    proc, log, url = start_server(args.server, model, folder / (args.name + "-server.log"), args.port, manifest.get("thinking_mode"), manifest["decode"]["seed"])
     try:
         with output_path.open("a", encoding="utf-8") as out:
             for i, task in enumerate(tasklist, 1):
+                max_tokens = manifest["decode"]["math_max_tokens"] if task["domain"].startswith("mgsm") else manifest["decode"]["code_max_tokens"]
                 payload = {
                     "messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": task["prompt"]}],
-                    "temperature": 0, "top_k": 1, "seed": 20261123,
-                    "max_tokens": 192 if task["domain"].startswith("mgsm") else 320,
+                    "temperature": manifest["decode"]["temperature"], "top_k": manifest["decode"]["top_k"], "seed": manifest["decode"]["seed"],
+                    "max_tokens": max_tokens,
                 }
                 response = requests.post(url + "/v1/chat/completions", json=payload, timeout=120)
                 response.raise_for_status()
@@ -179,6 +186,9 @@ def run(args):
                     "id": task["id"], "domain": task["domain"], "response": generated,
                     "finish_reason": result["choices"][0]["finish_reason"],
                     "completion_tokens": result.get("usage", {}).get("completion_tokens"),
+                    "reasoning_present": bool(result["choices"][0]["message"].get("reasoning_content")),
+                    "reasoning_characters": len(result["choices"][0]["message"].get("reasoning_content") or ""),
+                    "max_tokens": max_tokens,
                 }
                 if task["domain"].startswith("mgsm"):
                     answer = parse_number(generated)
