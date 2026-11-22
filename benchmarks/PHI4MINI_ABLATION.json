@@ -1,0 +1,68 @@
+{
+  "status": "post-hoc exploratory after independent holdout was inspected; NOT confirmatory",
+  "source": "microsoft/Phi-4-mini-instruct",
+  "source_bf16_sha256": "4a967298f4692c596f78c3e19d0f0e6f69f56e353e61389d738bb41b42d784a1",
+  "comparison": "types inspected: Q4_K_S differs from pure Q4_K by 1 token_embd Q6_K and 8 early layer FFN Down / QKV Q5_K",
+  "samples": {
+    "pure_q4": {
+      "bytes": 2166699840,
+      "gguf_sha256": "3e60cd719fa4a0639723423e70804fd6ccc7e203f2abb4b1bee004dcacd3097c",
+      "corpora": {
+        "wiki_holdout": {
+          "kld": 0.504851,
+          "bf16_top_percent": 61.942
+        },
+        "code_holdout": {
+          "kld": 0.262617,
+          "bf16_top_percent": 80.84
+        }
+      }
+    },
+    "embedding_q6_only": {
+      "bytes": 2325150528,
+      "gguf_sha256": "5444f17ac8a108ae6d8f59d374318fa29726f7c12c70fe0f7a1766f69489dd45",
+      "corpora": {
+        "wiki_holdout": {
+          "kld": 0.180764,
+          "bf16_top_percent": 70.604
+        },
+        "code_holdout": {
+          "kld": 0.102948,
+          "bf16_top_percent": 88.189
+        }
+      }
+    },
+    "eight_q5_only": {
+      "bytes": 2187147072,
+      "gguf_sha256": "8d4e72ee48dbe3689410ee8ec165015349ef19936b0709b865fe77db12bb3b3b",
+      "corpora": {
+        "wiki_holdout": {
+          "kld": 0.477308,
+          "bf16_top_percent": 61.68
+        },
+        "code_holdout": {
+          "kld": 0.2241,
+          "bf16_top_percent": 82.283
+        }
+      }
+    },
+    "standard_q4ks": {
+      "bytes": 2345597760,
+      "gguf_sha256": "a6e300d2aaa6edc85745b31bbfaff29f33a52f27565877e2be82a1408d473291",
+      "corpora": {
+        "wiki_holdout": {
+          "kld": 0.152122,
+          "bf16_top_percent": 71.26
+        },
+        "code_holdout": {
+          "kld": 0.069703,
+          "bf16_top_percent": 90.814
+        }
+      }
+    }
+  },
+  "share_of_full_q4ks_kld_drop_explained_by_embedding_alone": {
+    "wiki_holdout": 0.9187988512427386,
+    "code_holdout": 0.8276693241548049
+  }
+}
