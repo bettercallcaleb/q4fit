@@ -4,6 +4,8 @@ Experimental CLI workbench for BF16-referenced per-tensor GGUF mixed-precision q
 
 **Important result:** The original one-chunk v0.1 optimization **failed to generalize** on a larger WikiText-2 test. At comparable size, v0.1 mixed KLD was 0.125771 versus plain Q4_K 0.110148 (lower is better). See [Benchmark protocol](docs/PROTOCOL.md) for the falsification and larger matched evaluations. Never cite the small-sample result alone as evidence of improvement.
 
+**Updated Qwen3-4B result:** A conservative early-FFN-Down Q5_K upgrade (18 tensors, otherwise Q4_K) has now improved BF16 KLD on two WikiText test segments while adding 2.47% file size, at roughly 1.6% lower single-GPU decode throughput. It is **not within the original 2.12 GiB hard budget**. See [expanded results](benchmarks/QWEN3_4B_EXPANDED.md) and the published [18-tensor recipe](recipes/qwen3-4b-early-down-q5.txt).
+
 Implemented: inspect, build, baseline, eval, probe, group search, and experimental multi-domain layer-range search. This is an experiment framework, not a claim of new quantization math.
 
 ## Setup

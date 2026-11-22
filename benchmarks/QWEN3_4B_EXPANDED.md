@@ -31,3 +31,44 @@ Plain Q4_K KLD: WikiText validation **0.099345**, code **0.083428**. Tested eigh
 The result motivated a **predeclared** follow-up testing Q3 reductions in FFN Up / Attention to offset the consistently positive contribution of Q5 in early FFN Down layers. The later portion of WikiText TEST was held separately for final evaluation.
 
 Neither the 8-candidate experiment nor the follow-up establishes global optimality. No trained parameters, source model weights, or copied WikiText test content are redistributed.
+
+## v0.2 targeted compensation search
+
+A second predeclared five-trial search kept early FFN Down Q5_K as the candidate upgrade and separately tested Q3_K for FFN Up layers 0–17, FFN Up layers 18–35, all Attention Q layers, and all Attention Output layers. At the same 2.12 GiB budget, the minimax multi-domain selector again chose plain Q4_K.
+
+| Isolated change from plain Q4_K | WikiText validation KLD | Code KLD |
+|---|---:|---:|
+| FFN Down 0–17 Q5_K | **0.084527** | **0.062109** |
+| FFN Up 0–17 Q3_K | 0.124308 | 0.090769 |
+| FFN Up 18–35 Q3_K | 0.133792 | 0.099397 |
+| Attention Q 0–35 Q3_K | 0.114821 | 0.094472 |
+| Attention Output 0–35 Q3_K | 0.117937 | 0.095748 |
+
+All Q3_K compensations introduced enough KL degradation to prevent a validated under-budget win among these tested combinations. A controlled one-upgrade Pareto candidate (early FFN Down Q5_K) is evaluated separately, above the strict 2.12 GiB budget. Results should not be conflated with an equal-size improvement.
+
+## Validated Pareto point above the strict budget
+
+One single-family upgrade was evaluated without compensating Q3 reductions: **FFN Down layers 0–17 Q5_K, all other eligible weights Q4_K**. Serialized size: **2,325,302,624 bytes** (2.166 GiB), **+2.47% vs plain Q4_K**, below standard Q4_K_S's 2,383,309,664 bytes.
+
+| Model | WikiText test head KLD (24 × 512) | WikiText test tail KLD (16 × 512) | Tail top-1 |
+|---|---:|---:|---:|
+| Plain Q4_K | 0.110148 | 0.120019 | 85.368% |
+| Early FFN Down Q5_K | **0.084098** | **0.097860** | **86.642%** |
+| Standard Q4_K_S | 0.095972 | 0.112718 | 86.029% |
+| Standard Q4_K_M | 0.072403 | 0.079459 | 88.137% |
+
+The tail consists of the raw WikiText-2 test file from the first line after approximately 60% of source characters, with SHA256 `c6cdfd04d3e293ca728dbaaa21e383d6957e4d8b095d75ebb2fef0c0c06d3de3`, not used during search. The early Down Q5 model improved mean KLD by 23.6% on the previously examined test-head subset and 18.5% on the separately held test-tail subset. It also improved tail top-token agreement by 1.27 percentage points. This is a **limited one-model empirical tradeoff**, not proof of superiority on broader tasks or models.
+
+## 4090-only runtime
+
+llama-bench build `70adb1b4c` (10588); `CUDA_VISIBLE_DEVICES=0`, `-ngl 999`, `-p 512`, `-n 128`, 3 repetitions; same host and run. Higher t/s is better.
+
+| Model | pp512 tok/s | tg128 tok/s |
+|---|---:|---:|
+| Plain Q4_K | 18,393.82 ± 2,688.64 | 279.25 ± 0.50 |
+| Early FFN Down Q5_K | 18,313.57 ± 2,415.22 | 274.88 ± 0.56 |
+| Standard Q4_K_S | 17,672.13 ± 2,528.12 | 270.17 ± 0.73 |
+
+The early Down Q5 choice is about 1.6% slower than plain Q4_K in this short decode benchmark. Prompt throughput results overlap substantially; treat speed observations as workload-specific, not universal.
+
+The exact 18-tensor recipe is published in `recipes/qwen3-4b-early-down-q5.txt`. Result GGUF SHA256: `4c26092b49095c2a7a57d39f386a237682583411530f938436a301f7c8e4534a`. Weights are intentionally excluded from GitHub.
