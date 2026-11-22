@@ -82,7 +82,7 @@ def sandbox_execute(code, task, directory, timeout=9):
 
 
 def parse_number(response):
-    pattern = r"(?im)^\s*FINAL\s*:\s*([+-]?\d+(?:,\d{3})*(?:\.\d+)?)\s*$"
+    pattern = r"(?im)^\s*FINAL\s*:\s*([+-]?\d+(?:,\d{3})*(?:\.\d+)?)\.?\s*$"
     matches = re.findall(pattern, response)
     try:
         return Decimal(matches[-1].replace(",", "")) if matches else None

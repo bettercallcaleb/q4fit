@@ -1,0 +1,144 @@
+{
+  "study": "phi4mini-cross-family-generalization-v0.7",
+  "date": "2026-11-23",
+  "source": "microsoft/Phi-4-mini-instruct",
+  "source_hf_revision": "cfbefacb99257ffa30c83adab238a50856ac3083",
+  "source_gguf_bf16_sha256": "4a967298f4692c596f78c3e19d0f0e6f69f56e353e61389d738bb41b42d784a1",
+  "method": "no imatrix; Q3_K/Q4_K/Q5_K pure llama quantization; byte-cached single-tensor KL search; independent composed candidate verification",
+  "base_q4_bytes": 2166699840,
+  "budget_bytes": 2175366639,
+  "target_gib": 2.0259680589661,
+  "budget_increase_percent": 0.4,
+  "max_top_drop_pp": 0.5,
+  "tuning_domains": [
+    {
+      "name": "wiki_train",
+      "corpus_sha256": "4cd0f6876d07a413aa911261ff6d363c72d757d47f0fdd6015702014c89cb9c7",
+      "ctx": 256,
+      "chunks": 6
+    },
+    {
+      "name": "code_train",
+      "corpus_sha256": "e6ef9fe3f2caeec31e89968c4fab131e79a0620021675ed7df37ec4cb74c423b",
+      "ctx": 256,
+      "chunks": 6
+    }
+  ],
+  "holdout_domains": [
+    {
+      "name": "wiki_holdout",
+      "corpus_sha256": "9163f19687349a1c5fceccf2a580feec95b749bc9f291e9c8cadc5526eeae8d5",
+      "ctx": 256,
+      "chunks": 6
+    },
+    {
+      "name": "code_holdout",
+      "corpus_sha256": "2c3f4b988150d90b343090198d8d05128dcade8e539446b927504b90019f856e",
+      "ctx": 256,
+      "chunks": 6
+    }
+  ],
+  "probes": [
+    {
+      "name": "blk.0.ffn_down.weight",
+      "type": "Q5_K"
+    },
+    {
+      "name": "blk.1.ffn_down.weight",
+      "type": "Q5_K"
+    },
+    {
+      "name": "blk.2.ffn_down.weight",
+      "type": "Q5_K"
+    },
+    {
+      "name": "blk.3.ffn_down.weight",
+      "type": "Q5_K"
+    },
+    {
+      "name": "blk.4.ffn_down.weight",
+      "type": "Q5_K"
+    },
+    {
+      "name": "blk.5.ffn_down.weight",
+      "type": "Q5_K"
+    },
+    {
+      "name": "blk.6.ffn_down.weight",
+      "type": "Q5_K"
+    },
+    {
+      "name": "blk.7.ffn_down.weight",
+      "type": "Q5_K"
+    },
+    {
+      "name": "blk.8.ffn_down.weight",
+      "type": "Q5_K"
+    },
+    {
+      "name": "blk.10.ffn_down.weight",
+      "type": "Q5_K"
+    },
+    {
+      "name": "blk.12.ffn_down.weight",
+      "type": "Q5_K"
+    },
+    {
+      "name": "blk.16.ffn_down.weight",
+      "type": "Q5_K"
+    },
+    {
+      "name": "blk.20.ffn_down.weight",
+      "type": "Q5_K"
+    },
+    {
+      "name": "blk.24.ffn_down.weight",
+      "type": "Q5_K"
+    },
+    {
+      "name": "blk.0.ffn_up.weight",
+      "type": "Q3_K"
+    },
+    {
+      "name": "blk.1.ffn_up.weight",
+      "type": "Q3_K"
+    },
+    {
+      "name": "blk.2.ffn_up.weight",
+      "type": "Q3_K"
+    },
+    {
+      "name": "blk.4.ffn_up.weight",
+      "type": "Q3_K"
+    },
+    {
+      "name": "blk.0.attn_output.weight",
+      "type": "Q3_K"
+    },
+    {
+      "name": "blk.2.attn_output.weight",
+      "type": "Q3_K"
+    },
+    {
+      "name": "blk.4.attn_output.weight",
+      "type": "Q3_K"
+    },
+    {
+      "name": "blk.6.attn_output.weight",
+      "type": "Q3_K"
+    },
+    {
+      "name": "blk.0.attn_qkv.weight",
+      "type": "Q3_K"
+    },
+    {
+      "name": "blk.2.attn_qkv.weight",
+      "type": "Q3_K"
+    }
+  ],
+  "beam_width": 2500,
+  "max_edits": 6,
+  "verify_top": 4,
+  "selection_rule": "minimax of actually measured tuning-domain relative BF16 KLD among verified candidates; no holdout peeking",
+  "task_suite_sha256": "8853edf88434407f660c461a596350ecfcd21b8ceb1bd73c2ec8cdcba2de7b86"
+}

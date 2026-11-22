@@ -8,6 +8,7 @@ class TestTaskEvaluation(unittest.TestCase):
     def test_number_strict(self):
         self.assertEqual(parse_number("Compute 2 + 5.\nFINAL: 7"), Decimal(7))
         self.assertEqual(parse_number("FINAL: -1,234"), Decimal(-1234))
+        self.assertEqual(parse_number("FINAL: 12."), Decimal(12))
         self.assertIsNone(parse_number("The result is 7"))
         self.assertIsNone(parse_number("FINAL: 7 dollars"))
         self.assertEqual(parse_number("FINAL: 1\nFINAL: 2"), Decimal(2))
