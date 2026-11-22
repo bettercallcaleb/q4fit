@@ -2,7 +2,9 @@
 
 Experimental CLI workbench for BF16-referenced per-tensor GGUF mixed-precision quantization. The tool uses upstream llama.cpp quantizer and perplexity evaluator, and stores auditable tensor recipes and SHA256 receipts.
 
-Implemented in v0.1: inspect, build, baseline, eval, probe, and measured group-level search under a byte budget. This is an experiment framework, not a claim of new quantization math.
+**Important result:** The original one-chunk v0.1 optimization **failed to generalize** on a larger WikiText-2 test. At comparable size, v0.1 mixed KLD was 0.125771 versus plain Q4_K 0.110148 (lower is better). See [Benchmark protocol](docs/PROTOCOL.md) for the falsification and larger matched evaluations. Never cite the small-sample result alone as evidence of improvement.
+
+Implemented: inspect, build, baseline, eval, probe, group search, and experimental multi-domain layer-range search. This is an experiment framework, not a claim of new quantization math.
 
 ## Setup
 
@@ -32,6 +34,16 @@ q4fit search --model "$BF16" --base-model work/plain-q4.gguf --base-log work/pla
 ~~~
 
 The search saves each trial's results, final recipe, search-report.json and full evaluation logs. It deletes only temporary GGUF candidates. Output is either a validated best.gguf or a report that no improvement was found among measured options. An absent improvement is a legitimate result.
+
+## Multi-domain layer-range search
+
+After creating BF16 reference logits and plain Q4_K evaluation logs for at least two tuning domains, adapt the [JSON example](examples/search-multi.json) to your local paths.
+
+~~~bash
+q4fit-multi --config examples/search-multi.json --workdir work/search-v2 --max-trials 8
+~~~
+
+Groups such as `ffn_down@0:17` and `ffn_gate@18:35` change only selected layers of a tensor family. The optimizer minimizes the worst relative KLD across tuning domains under a GGUF byte budget, saves SHA256 receipts, and measures the combined recipe. A tuning pass also requires top-token agreement not to deteriorate beyond the configured allowance. The untouched test set must be evaluated separately.
 
 ## Tensor control
 

@@ -9,3 +9,7 @@ work/
 *.baseline.json
 *.baseline.log
 *-recipe/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
