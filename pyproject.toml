@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "q4fit"
-version = "0.4.0"
+version = "0.5.0"
 description = "BF16-referenced, tensor-wise GGUF mixed-precision experiments"
 requires-python = ">=3.10"
-dependencies = ["gguf>=0.16"]
+dependencies = ["gguf>=0.16", "requests>=2.31"]
 
 [project.scripts]
 q4fit = "q4fit:main"
@@ -15,6 +15,7 @@ q4fit-multi = "q4multi:main"
 q4fit-cache = "q4cache:main"
 q4fit-scan = "q4scan:main"
 q4fit-tune = "q4tune:main"
+q4fit-tasks = "q4tasks:main"
 
 [tool.setuptools]
-py-modules = ["q4fit", "q4search", "q4multi", "q4cache", "q4scan", "q4tune"]
+py-modules = ["q4fit", "q4search", "q4multi", "q4cache", "q4scan", "q4tune", "q4tasks"]

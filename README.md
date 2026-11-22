@@ -14,6 +14,8 @@ Implemented: inspect, build, BF16 baseline/eval, per-tensor probe, group search,
 
 **v0.4 Qwen3-4B measured result:** After a 54-tensor scan, a **seven-tensor Q3_K/Q5_K mix** remained within the original **2.12 GiB** constraint and reduced BF16 KLD on two frozen, independent WikiText/code holdouts by **16.0%/13.7%** versus pure Q4_K. Its bytes were identical to an independent direct llama.cpp quantization. A larger standard Q4_K_S model had worse mean KLD on both sampled holdouts, though some tail/top-token measures favored Q4_K_S. Decode speed on RTX 4090 was approximately **0.4% below** pure Q4_K. [Full report](benchmarks/QWEN3_4B_TENSOR_SEARCH.md), [54 measured tensor probes](benchmarks/QWEN3_4B_TENSOR_SWEEP.csv), [exact recipe](recipes/qwen3-4b-v04-7tensor.txt). One-model PoC only; no broad capability claim.
 
+**v0.5 downstream task check:** The unchanged seven-tensor recipe did **not** show an aggregate task-accuracy advantage over pure Q4_K on a frozen 32-pair English/Chinese MGSM and 24-task MBPP pilot. English MGSM favored Q4Fit (18 vs 14 correct), Chinese favored pure Q4_K (13 vs 17), and MBPP passed 11/24 for both with identical pass/fail items. This contrasts with the earlier BF16-KLD improvements; the 95% clustered bilingual math accuracy-difference interval includes zero. [Full transparent task report](benchmarks/QWEN3_4B_TASK_EVAL.md), [task-level outcomes](benchmarks/QWEN3_4B_TASK_ITEM_RESULTS.csv), [method and corrected protocol](docs/TASK_EVALUATION.md). Original code-prompt interface error and rerun are disclosed. No weights were retuned based on this evaluation.
+
 ## Setup
 
 Python 3.10+, gguf, a BF16 or F16 GGUF source, and recent llama.cpp llama-quantize and llama-perplexity binaries supporting the model.
