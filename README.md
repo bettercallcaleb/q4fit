@@ -101,6 +101,8 @@ It saves raw responses, paired answer changes, model hashes and a readable repor
 
 Local 14B and 32B models beat a 4B-class baseline, but 32B did not consistently outperform 14B. Difficulty levels now descend in the larger-model aggregate, though individual concepts and answer positions remain noisy. The benchmark is a diagnostic, not proof of quantization quality. [Details and limitations](docs/KNOWLEDGE_DEPTH.md).
 
+To share a completed depth test with RAMGPT or another research notebook, run `q4fit-evidence --depth-dir depth-results --out depth-results/ramgpt-experiment.json`. It exports model hashes, paired results and evidence fingerprints without local file paths or raw answers. It is **not** a QuantBench verification or a publish action. [Evidence format and workflow](docs/RAMGPT_EVIDENCE.md).
+
 ## What have we measured?
 
 | Model | File size change vs Q4_K | KLD change vs Q4_K on held-out text |
