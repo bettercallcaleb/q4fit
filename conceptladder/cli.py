@@ -88,7 +88,11 @@ def parse_letter(content):
     final = re.findall(r"(?im)^\s*FINAL\s*:\s*([A-D])\s*$", content)
     if final:
         return final[-1].upper()
-    match = re.fullmatch(r"\s*(?:(?:answer|option)\s*[:=]\s*)?([A-Da-d])(?:\s*[.)]\s*[^\n]*)?\s*", content, re.I)
+    stripped = content.strip()
+    if not stripped:
+        return None
+    first_line = stripped.splitlines()[0].strip()
+    match = re.fullmatch(r"(?:(?:answer|option)\s*[:=]\s*)?([A-Da-d])(?:\s*[.)]\s*[^\n]*)?", first_line, re.I)
     return match.group(1).upper() if match else None
 
 
@@ -136,7 +140,7 @@ def grade(run, items):
             raise ValueError("Invalid prediction: " + item["id"])
         if pred is None:
             invalid += 1
-        _, answer = materialize(item, run["seed"])
+        _, answer = materialize(item, run.get("answer_seed", run["seed"]))
         passed = pred == answer
         correct[item["id"]] = passed
         per_pack[item["pack"]]["correct"] += int(passed)
@@ -166,7 +170,7 @@ def grade(run, items):
 def create_run(args, items):
     responses = []
     for index, item in enumerate(items, 1):
-        prompt, _ = materialize(item, args.seed)
+        prompt, _ = materialize(item, getattr(args, "answer_seed", None) if getattr(args, "answer_seed", None) is not None else args.seed)
         raw = None
         try:
             raw = request_answer(args.url, args.model, prompt, args.api_key, args.timeout, args.max_tokens, bool(item.get("hard")))
@@ -185,6 +189,7 @@ def create_run(args, items):
         "model": args.model,
         "endpoint": args.url,
         "seed": args.seed,
+        "answer_seed": getattr(args, "answer_seed", None) if getattr(args, "answer_seed", None) is not None else args.seed,
         "suite": getattr(args, "suite", "classic"),
         "variants": getattr(args, "variants", 1),
         "packs": getattr(args, "packs", "all"),
@@ -217,6 +222,9 @@ def load_suite(suite, packs, seed=17, variants=4):
     if suite == "hard":
         from .hardgen import load_hard
         return load_hard(seed=seed, variants=variants, selected=packs)
+    if suite == "ladder":
+        from .calibrated import load_ladder
+        return load_ladder(seed=seed, variants=variants, selected=packs)
     raise ValueError("Unknown suite: " + str(suite))
 
 
@@ -230,21 +238,22 @@ def main():
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("list")
     p.add_argument("--packs", default="all")
-    p.add_argument("--suite", choices=["classic", "hard"], default="classic")
+    p.add_argument("--suite", choices=["classic", "hard", "ladder"], default="classic")
     p.add_argument("--seed", type=int, default=17)
     p.add_argument("--variants", type=int, default=4)
     p = sub.add_parser("validate")
     p.add_argument("--packs", default="all")
-    p.add_argument("--suite", choices=["classic", "hard"], default="classic")
+    p.add_argument("--suite", choices=["classic", "hard", "ladder"], default="classic")
     p.add_argument("--seed", type=int, default=17)
     p.add_argument("--variants", type=int, default=4)
     p = sub.add_parser("run")
     p.add_argument("--packs", default="all")
-    p.add_argument("--suite", choices=["classic", "hard"], default="classic")
+    p.add_argument("--suite", choices=["classic", "hard", "ladder"], default="classic")
     p.add_argument("--variants", type=int, default=4)
     p.add_argument("--url", default="http://127.0.0.1:8080/v1")
     p.add_argument("--model", required=True)
-    p.add_argument("--seed", type=int, default=17)
+    p.add_argument("--seed", type=int, default=17, help="Seed for scenario generation")
+    p.add_argument("--answer-seed", type=int, default=None, help="Independent answer-option ordering seed (defaults to --seed)")
     p.add_argument("--api-key", default=os.environ.get("OPENAI_API_KEY", ""))
     p.add_argument("--timeout", type=int, default=120)
     p.add_argument("--max-tokens", type=int, default=32)
@@ -257,6 +266,10 @@ def main():
     p.add_argument("reference")
     p.add_argument("candidate")
     p.add_argument("--out", default="-")
+    p = sub.add_parser("calibrate")
+    p.add_argument("runs", nargs="+")
+    p.add_argument("--out", default="-")
+    p.add_argument("--no-reparse", action="store_true")
     args = parser.parse_args()
     if args.command in ("list", "validate", "run"):
         items = load_suite(args.suite, args.packs, args.seed, args.variants)
@@ -279,11 +292,17 @@ def main():
         stats = grade(result, items)
         stats.pop("pass")
         write_json(args.out, {"model": result.get("model"), "dataset_sha256": result["dataset_sha256"], **stats})
+    elif args.command == "calibrate":
+        from .reporting import inspect_runs
+        write_json(args.out, inspect_runs(args.runs, reparse_raw=not args.no_reparse))
     elif args.command == "compare":
         base = load_run(args.reference)
         candidate = load_run(args.candidate)
-        if base["dataset_sha256"] != candidate["dataset_sha256"] or base["seed"] != candidate["seed"]:
-            raise ValueError("Reference and candidate need matching dataset hashes and seeds")
+        if (base["dataset_sha256"] != candidate["dataset_sha256"]
+                or base["seed"] != candidate["seed"]
+                or base.get("answer_seed", base["seed"]) != candidate.get("answer_seed", candidate["seed"])
+                or base.get("suite", "classic") != candidate.get("suite", "classic")):
+            raise ValueError("Reference and candidate need the same question set, suite, and answer ordering")
         items = items_for_run(base)
         a, b = grade(base, items), grade(candidate, items)
         lost = sorted(k for k in a["pass"] if a["pass"][k] and not b["pass"][k])
@@ -294,6 +313,7 @@ def main():
             "candidate_model": candidate.get("model"),
             "dataset_sha256": base["dataset_sha256"],
             "seed": base["seed"],
+            "answer_seed": base.get("answer_seed", base["seed"]),
             "reference_accuracy": a["accuracy"],
             "candidate_accuracy": b["accuracy"],
             "accuracy_delta": round(b["accuracy"] - a["accuracy"], 6),
