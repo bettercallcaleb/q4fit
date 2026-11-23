@@ -79,7 +79,7 @@ python scripts/publish_my_q4.py \
 
 Add `--publish --repo YOUR_USERNAME/Phi-4-mini-Q4Fit-GGUF` to upload it. Recipes are **model-specific**. Do not apply this Phi recipe to a different model.
 
-Q4Fit also supports compatible MoE expert weights. The [Inkling 2 Mini mixed GGUF](benchmarks/INKLING2MINI_PILOT.md) is a working Q3/Q4/Q5 example, with no claim that it improves answer quality.
+Q4Fit also supports compatible MoE expert weights. The [Inkling 2 Mini mixed GGUF](benchmarks/INKLING2MINI_PILOT.md) runs successfully, but [measured KLD and speed](benchmarks/INKLING2MINI_VALIDATION.md) show **no advantage over standard Q4_K**. It is an experimental Q3/Q4/Q5 example, not a recommended replacement.
 
 For your own experiments, Q4Fit can compare a quant against the original model, test individual weight changes, and search for combinations that fit a file-size limit. These tools need a high-precision GGUF and sample text for evaluation. See [quantization search](docs/TENSOR_OPTIMIZER.md) and [tensor caching](docs/CACHE.md).
 

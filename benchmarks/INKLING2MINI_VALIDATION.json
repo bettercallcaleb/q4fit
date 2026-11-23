@@ -1,0 +1,114 @@
+{
+  "status": "no_demonstrated_improvement",
+  "reference": "ggml-org/Inkling-2-Mini-GGUF BF16 upcast (original released weights NVFP4/MXFP8)",
+  "input_revision": "e8a2cecf0e78914f07cc27b9be711a9b2c7561d9",
+  "llama_cpp_commit": "f4f6f2e7db76e98c95cc9b7fc608ea669c806044",
+  "gpu_speed": "RTX 4090, CUDA_VISIBLE_DEVICES=0, llama-bench, 512 prompt and 128 generation tokens",
+  "speed": {
+    "pure": {
+      "prefill_512": {
+        "tokens_per_second": 2999.5503074999997,
+        "session_means": [
+          3000.32422,
+          2998.776395
+        ],
+        "repetitions_per_session": 5
+      },
+      "generation_128": {
+        "tokens_per_second": 79.05006800000001,
+        "session_means": [
+          79.041903,
+          79.058233
+        ],
+        "repetitions_per_session": 5
+      }
+    },
+    "mix": {
+      "prefill_512": {
+        "tokens_per_second": 2994.471847,
+        "session_means": [
+          2995.48841,
+          2993.455284
+        ],
+        "repetitions_per_session": 5
+      },
+      "generation_128": {
+        "tokens_per_second": 78.8401225,
+        "session_means": [
+          78.791285,
+          78.88896
+        ],
+        "repetitions_per_session": 5
+      }
+    }
+  },
+  "sets": {
+    "wiki_holdout": {
+      "corpus_sha256": "9163f19687349a1c5fceccf2a580feec95b749bc9f291e9c8cadc5526eeae8d5",
+      "n_chunks": 20,
+      "context_tokens_per_chunk": 256,
+      "bf16_upcast_ppl": 8.7301,
+      "models": {
+        "pure": {
+          "mean_kld": 0.023035,
+          "same_top_probability_percent": 93.661,
+          "perplexity": 8.8649
+        },
+        "mix": {
+          "mean_kld": 0.023562,
+          "same_top_probability_percent": 93.307,
+          "perplexity": 8.8545
+        }
+      },
+      "paired_20_window_bootstrap": {
+        "seed": 20261123,
+        "resamples": 10000,
+        "note": "Approximate differences reconstructed from rounded cumulative per-chunk KLD rows; contiguous 256-token windows",
+        "mixed_minus_q4_k_mean": 0.0005300000000000027,
+        "ci95_absolute": [
+          -0.0010011,
+          0.0017946375000000062
+        ],
+        "mix_better_windows": 6,
+        "mix_worse_windows": 14
+      }
+    },
+    "code_holdout": {
+      "corpus_sha256": "2c3f4b988150d90b343090198d8d05128dcade8e539446b927504b90019f856e",
+      "n_chunks": 20,
+      "context_tokens_per_chunk": 256,
+      "bf16_upcast_ppl": 2.1852,
+      "models": {
+        "pure": {
+          "mean_kld": 0.014362,
+          "same_top_probability_percent": 96.929,
+          "perplexity": 2.1999
+        },
+        "mix": {
+          "mean_kld": 0.015191,
+          "same_top_probability_percent": 96.142,
+          "perplexity": 2.209
+        }
+      },
+      "paired_20_window_bootstrap": {
+        "seed": 20261123,
+        "resamples": 10000,
+        "note": "Approximate differences reconstructed from rounded cumulative per-chunk KLD rows; contiguous 256-token windows",
+        "mixed_minus_q4_k_mean": 0.0008300000000000002,
+        "ci95_absolute": [
+          -0.00026099999999999566,
+          0.0019910375
+        ],
+        "mix_better_windows": 8,
+        "mix_worse_windows": 12
+      }
+    }
+  },
+  "file_size_bytes": {
+    "pure": 15822563008,
+    "mix": 15811946176
+  },
+  "source_sha256": "7074c9762e6769a608c7b23960a7fd2444880b1174a3910149749f6d01389aec",
+  "pure_sha256": "259aa3d0fd739f6d902abfefcb1030fb3198d87f6d0a8cf830927efcd66fd148",
+  "mix_sha256": "ba344ac332e5a9d91c0f6f7b79b97c1bc470fb408250e7063d53a487ea2333bc"
+}

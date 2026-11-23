@@ -1,5 +1,7 @@
 # Inkling 2 Mini: first Q4Fit mixed GGUF
 
+**Follow-up validation:** The [20-chunk BF16-reference comparison and 4090 speed benchmark](INKLING2MINI_VALIDATION.md) found no demonstrated improvement over standard Q4_K. The mix is functional, but neither quality nor speed is better on the measured tests.
+
 This is a working, experimental mixed-precision version of [Inkling 2 Mini](https://huggingface.co/thinkingmachines/Inkling-2-Mini), not a claim that Q4Fit improves the model's accuracy.
 
 ## Files and checks
@@ -38,7 +40,7 @@ Q4Fit v0.8 supports compatible three-dimensional MoE expert tensors and estimate
 
 Yes. Both the pure Q4_K and mixed files loaded successfully on an **RTX 4090** using the pinned recent llama.cpp build. Eight short prompts involving arithmetic, translation, Linux, Python, JSON, English and Chinese returned correct answers from both; formatting differed slightly. The mixed model also identified a red square using the unchanged BF16 vision projector.
 
-These are basic functional checks. **No representative KLD benchmark, long-context benchmark, reasoning test or broad accuracy improvement has been established.**
+These are basic functional checks. A [follow-up BF16-reference KLD benchmark](INKLING2MINI_VALIDATION.md) found no KLD advantage for the mixed version. No broad task-accuracy improvement has been established.
 
 ## Source and reproduction
 
