@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from conceptladder.cli import fingerprint, load_packs, materialize
+from conceptladder.cli import fingerprint, load_packs, materialize, parse_letter
 from q4depth import build_comparison, main, render_report
 
 
@@ -51,6 +51,10 @@ class DepthTests(unittest.TestCase):
         self.assertEqual(fingerprint(items), "158500c2f341adb653914ead56867ee83a60fe6b830b9c25cb81fb64db609a8a")
         for pack in ("tcp", "sqlite", "tls13"):
             self.assertEqual(len(load_packs(pack)), 12)
+
+    def test_labeled_answers(self):
+        self.assertEqual(parse_letter("B. Readers and one writer can proceed concurrently"), "B")
+        self.assertEqual(parse_letter("Answer: A. No; there is still only one writer at a time"), "A")
 
     def test_comparison_and_report(self):
         items = load_packs("tcp")

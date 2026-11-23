@@ -80,7 +80,7 @@ def parse_letter(content):
         content = " ".join(str(x.get("text", "")) for x in content if isinstance(x, dict))
     if not isinstance(content, str):
         return None
-    match = re.fullmatch(r"\s*(?:(?:answer|option)\s*[:=]\s*)?([A-Da-d])\s*[.)]?\s*", content)
+    match = re.fullmatch(r"\s*(?:(?:answer|option)\s*[:=]\s*)?([A-Da-d])(?:\s*[.)]\s*[^\n]*)?\s*", content, re.I)
     return match.group(1).upper() if match else None
 
 
@@ -156,6 +156,7 @@ def create_run(args, items):
     responses = []
     for index, item in enumerate(items, 1):
         prompt, _ = materialize(item, args.seed)
+        raw = None
         try:
             raw = request_answer(args.url, args.model, prompt, args.api_key, args.timeout, args.max_tokens)
             pred = parse_letter(raw)
@@ -163,7 +164,7 @@ def create_run(args, items):
         except (urllib.error.URLError, TimeoutError, ValueError, KeyError) as exc:
             pred = None
             error = type(exc).__name__ + ": " + str(exc)[:160]
-        responses.append({"id": item["id"], "prediction": pred, "error": error})
+        responses.append({"id": item["id"], "prediction": pred, "raw_response": raw, "error": error})
         print(f"{index}/{len(items)} {item['id']} -> {pred or '-'}", file=sys.stderr, flush=True)
         if args.delay:
             time.sleep(args.delay)
