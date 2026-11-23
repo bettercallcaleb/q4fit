@@ -1,12 +1,12 @@
 # Make your own Q4 model and put it on Hugging Face
 
-**No math. No AI research background. Just copy and paste.**
+Create a GGUF from original Hugging Face weights, then publish it to your own model repository. The walkthrough uses Qwen3-0.6B so you can try the process with a small model.
 
 You need a Linux computer, enough free disk space for the original model **and** two GGUF files, an internet connection, and a Hugging Face account. Start with a small model. This guide uses **Qwen3-0.6B**. You do **not** need a GPU to make the GGUF; CPU quantization is slower.
 
 ## 1. Install the tools (once)
 
-Open Terminal. Copy this entire block:
+Run these commands in an Ubuntu terminal:
 
 ```bash
 sudo apt update
@@ -23,15 +23,15 @@ python -m pip install -e . -r ../llama.cpp/requirements/requirements-convert_hf_
 
 ## 2. Make your first Q4
 
-Still in the `q4fit` folder, run:
+From the `q4fit` directory, run:
 
 ```bash
 python scripts/publish_my_q4.py --model Qwen/Qwen3-0.6B --llama-cpp ../llama.cpp --output-dir my-first-q4
 ```
 
-The program downloads the **original model**, converts it to GGUF, and makes `my-first-q4/Qwen3-0.6B-Q4_K.gguf`. Wait for **GGUF READY**. This can take several minutes. No Hugging Face upload happens yet.
+The program downloads the **original model**, converts it to GGUF, and makes `my-first-q4/Qwen3-0.6B-Q4_K.gguf`. The command prints **GGUF READY** when the file is complete. The first run downloads model weights and builds the GGUF. No Hugging Face upload happens yet.
 
-**What is Q4?** A smaller copy of the same model. It needs less memory, but its answers can change. Q4Fit does not train a new model.
+**What you made:** Q4_K stores most model weights with roughly four bits instead of the original 16 bits, reducing the file size. Answers can change; quantization does not train the model.
 
 ## 3. Upload your Q4 to Hugging Face
 
@@ -65,7 +65,7 @@ Bigger models need more disk space and take longer. If conversion fails, update 
 
 ## 5. Optional: use Q4Fit's special mixed-Q4 recipe
 
-The default above makes **ordinary Q4_K**. Q4Fit can also make a custom mix, but a recipe must match the **exact model architecture**. Do not reuse the Phi recipe on Qwen, or vice versa.
+The default command makes a standard **Q4_K** model. With Q4Fit, you can also choose different precision for selected weights. A recipe must match the **specific model architecture**. Do not reuse the Phi recipe on Qwen, or vice versa.
 
 For the **exact official Phi-4-mini-instruct** model, try the published, tested recipe:
 
@@ -93,4 +93,4 @@ That recipe improved average next-token similarity to the original Phi model on 
 
 ## Want the advanced automatic search?
 
-The automatic search in [Q4Fit's technical documentation](TENSOR_OPTIMIZER.md) requires a full-precision reference model, representative text, and repeated evaluation. It is **not** needed to publish your first Q4. Start with this guide, then experiment.
+For more control, [Q4Fit's search tools](TENSOR_OPTIMIZER.md) test precision changes against the original model using representative text. You do not need them to produce a standard Q4, and their output is not a guarantee of better responses.
