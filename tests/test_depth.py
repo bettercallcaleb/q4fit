@@ -56,6 +56,12 @@ class DepthTests(unittest.TestCase):
         self.assertEqual(parse_letter("B. Readers and one writer can proceed concurrently"), "B")
         self.assertEqual(parse_letter("Answer: A. No; there is still only one writer at a time"), "A")
 
+    def test_hard_suites(self):
+        from conceptladder.cli import load_suite
+        items = load_suite("hard", "all", 17, 4)
+        self.assertEqual(len(items), 240)
+        self.assertEqual(len(load_suite("hard", "security-hard", 17, 2)), 24)
+
     def test_comparison_and_report(self):
         items = load_packs("tcp")
         before = {i["id"]: True for i in items}
@@ -89,6 +95,7 @@ class DepthTests(unittest.TestCase):
                 "--candidate", str(q4),
                 "--llama-server", str(server),
                 "--out", str(output),
+                "--suite", "classic",
                 "--packs", "tcp",
                 "--port", str(self._unused_port()),
                 "--startup-timeout", "15",
@@ -98,11 +105,45 @@ class DepthTests(unittest.TestCase):
             comparison = json.loads((output / "comparison.json").read_text())
             receipt = json.loads((output / "receipt.json").read_text())
             self.assertEqual(receipt["items"], 12)
-            self.assertEqual(receipt["benchmark"], "conceptladder-bench/0.1.0")
+            self.assertEqual(receipt["benchmark"], "conceptladder-bench/0.1.0-classic")
             self.assertEqual(len(comparison["reference_depths"]), 3)
             self.assertEqual(len(comparison["lost"]), 0)
             self.assertEqual(comparison["reference_accuracy"], comparison["candidate_accuracy"])
             self.assertTrue((output / "report.md").is_file())
+
+    def test_hard_two_model_end_to_end(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            original = folder / "original.gguf"
+            quant = folder / "quant.gguf"
+            original.write_bytes(b"original-hard-test")
+            quant.write_bytes(b"quantized-hard-test")
+            server = folder / "fake-server"
+            server.write_text(SERVER, encoding="utf-8")
+            server.chmod(server.stat().st_mode | stat.S_IXUSR)
+            output = folder / "hard-results"
+            self.assertEqual(main([
+                "--reference", str(original),
+                "--candidate", str(quant),
+                "--llama-server", str(server),
+                "--out", str(output),
+                "--suite", "hard",
+                "--variants", "1",
+                "--packs", "db-hard",
+                "--port", str(self._unused_port()),
+                "--startup-timeout", "15",
+                "--request-timeout", "5",
+            ]), 0)
+            receipt = json.loads((output / "receipt.json").read_text())
+            reference = json.loads((output / "reference.json").read_text())
+            summary = json.loads((output / "comparison.json").read_text())
+            self.assertEqual(receipt["items"], 12)
+            self.assertEqual(receipt["suite"], "hard")
+            self.assertEqual(receipt["benchmark"], "conceptladder-bench/0.2.0-hard")
+            self.assertEqual(reference["suite"], "hard")
+            self.assertEqual(reference["variants"], 1)
+            self.assertEqual(len(summary["reference_depths"]), 3)
+            self.assertIn("12-question", (output / "report.md").read_text())
 
     @staticmethod
     def _unused_port():

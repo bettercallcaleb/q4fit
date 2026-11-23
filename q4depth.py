@@ -12,7 +12,7 @@ import urllib.request
 from pathlib import Path
 from types import SimpleNamespace
 
-from conceptladder.cli import create_run, fingerprint, grade, load_packs, write_json
+from conceptladder.cli import create_run, fingerprint, grade, load_suite, write_json
 
 
 def sha256_file(path):
@@ -89,6 +89,9 @@ def evaluate(args, gguf, label, items, server, folder):
                 max_tokens=args.max_tokens,
                 seed=args.seed,
                 delay=0,
+                suite=args.suite,
+                packs=args.packs,
+                variants=args.variants,
             )
             run = create_run(request_args, items)
             output = folder / f"{label}.json"
@@ -170,7 +173,7 @@ def render_report(comparison, reference, candidate, elapsed):
         "",
         *(f"- `{item}`" for item in comparison["gained"]),
         "",
-        "This is a 36-question multiple-choice pilot, not a statistical proof of improved model quality.",
+        f"This is a {len(comparison['reference_depths']) * 4}-question multiple-choice diagnostic, not a statistically validated claim of improved model quality.",
         "Wall time includes startup and is not a token/second throughput benchmark.",
         "Questions, model settings, and source weights should be held constant for comparisons.",
         "",
@@ -184,7 +187,9 @@ def main(argv=None):
     parser.add_argument("--candidate", "--quant", required=True, type=Path, dest="candidate")
     parser.add_argument("--llama-server", "--server", default="llama-server", dest="llama_server")
     parser.add_argument("--out", type=Path, default=Path("depth-results"))
-    parser.add_argument("--packs", default="all", help="all, tcp, tls13, sqlite, or comma-separated pack IDs")
+    parser.add_argument("--suite", choices=("hard", "classic"), default="hard")
+    parser.add_argument("--variants", type=int, default=4, help="Hard: independent generated variants per concept (1-32, default 4)")
+    parser.add_argument("--packs", default="all", help="all or comma-separated pack IDs; use --suite classic for tcp/tls13/sqlite")
     parser.add_argument("--seed", type=int, default=17)
     parser.add_argument("--port", type=int, default=18221)
     parser.add_argument("--ngl", type=int, default=99)
@@ -209,14 +214,16 @@ def main(argv=None):
             parser.error(f"GGUF file not found: {path}")
     server = resolve_server(args.llama_server)
     out = args.out.expanduser().resolve()
-    items = load_packs(args.packs)
+    items = load_suite(args.suite, args.packs, args.seed, args.variants)
     for name in ("reference.json", "candidate.json", "comparison.json", "report.md", "receipt.json"):
         if (out / name).exists() and not args.overwrite:
             parser.error(f"{out / name} exists; use a new --out or --overwrite")
     out.mkdir(parents=True, exist_ok=True)
     receipt = {
         "format": "q4fit-depth-v1",
-        "benchmark": "conceptladder-bench/0.1.0",
+        "benchmark": "conceptladder-bench/" + ("0.2.0-hard" if args.suite == "hard" else "0.1.0-classic"),
+        "suite": args.suite,
+        "variants": args.variants,
         "dataset_sha256": fingerprint(items),
         "items": len(items),
         "reference": {"path": str(reference), "sha256": sha256_file(reference), "bytes": reference.stat().st_size},
