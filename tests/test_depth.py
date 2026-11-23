@@ -168,6 +168,7 @@ class DepthTests(unittest.TestCase):
                 "--candidate", str(candidate),
                 "--llama-server", str(server),
                 "--out", str(output),
+                "--suite", "ladder",
                 "--variants", "1",
                 "--packs", "db-hard",
                 "--seed", "17",
@@ -189,6 +190,53 @@ class DepthTests(unittest.TestCase):
             self.assertEqual(run["answer_seed"], 63)
             self.assertEqual(comparison["answer_seed"], 63)
             self.assertIn("Answer-option ordering seed: `63`", (output / "report.md").read_text())
+
+    def test_exact_default_two_model_end_to_end(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            original = folder / "original.gguf"
+            candidate = folder / "candidate.gguf"
+            original.write_bytes(b"exact-base")
+            candidate.write_bytes(b"exact-quant")
+            server = folder / "fake-server"
+            server.write_text(SERVER, encoding="utf-8")
+            server.chmod(server.stat().st_mode | stat.S_IXUSR)
+            output = folder / "exact-results"
+            self.assertEqual(main([
+                "--reference", str(original),
+                "--candidate", str(candidate),
+                "--llama-server", str(server),
+                "--out", str(output),
+                "--variants", "1",
+                "--packs", "db-hard",
+                "--seed", "17",
+                "--port", str(self._unused_port()),
+                "--startup-timeout", "15",
+                "--request-timeout", "5",
+            ]), 0)
+            receipt = json.loads((output / "receipt.json").read_text())
+            ref = json.loads((output / "reference.json").read_text())
+            comparison = json.loads((output / "comparison.json").read_text())
+            self.assertEqual(receipt["benchmark"], "conceptladder-bench/0.4.0-exact")
+            self.assertEqual(receipt["suite"], "exact")
+            self.assertEqual(receipt["response_mode"], "exact")
+            self.assertEqual(receipt["scorer_version"], "0.4.0")
+            self.assertEqual(receipt["items"], 12)
+            self.assertEqual(ref["suite"], "exact")
+            self.assertEqual(len(ref["responses"]), 12)
+            self.assertTrue(all(row["prediction"] is None for row in ref["responses"]))
+            self.assertEqual(comparison["reference_invalid"], 12)
+            self.assertEqual(comparison["candidate_invalid"], 12)
+            self.assertIn("open-answer", (output / "report.md").read_text())
+
+    def test_exact_generation_and_parsing(self):
+        from conceptladder.exact import load_exact, parse_exact_response
+        items = load_exact(17, 4)
+        self.assertEqual(len(items), 240)
+        self.assertEqual(fingerprint(items), "437d994c1a2c027902951811f2fd43b45468bc2ed4fd78f3d90e63c97743011a")
+        for item in items:
+            self.assertNotIn("wrong", item)
+            self.assertEqual(parse_exact_response(item["correct"], item), item["correct"])
 
     @staticmethod
     def _unused_port():

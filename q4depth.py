@@ -117,6 +117,9 @@ def build_comparison(reference, candidate, a, b):
     lost = sorted(k for k in a["pass"] if a["pass"][k] and not b["pass"][k])
     gained = sorted(k for k in a["pass"] if not a["pass"][k] and b["pass"][k])
     return {
+        "suite": reference.get("suite", "classic"),
+        "reference_invalid": a.get("invalid", 0),
+        "candidate_invalid": b.get("invalid", 0),
         "reference_model": reference["model"],
         "candidate_model": candidate["model"],
         "dataset_sha256": reference["dataset_sha256"],
@@ -144,13 +147,15 @@ def render_report(comparison, reference, candidate, elapsed):
         "",
         f"- Benchmark dataset SHA256: `{comparison['dataset_sha256']}`",
         f"- Scenario generation seed: `{comparison['seed']}`",
-        f"- Answer-option ordering seed: `{comparison.get('answer_seed', comparison['seed'])}`",
+        ("- Answer options: none (open-answer)" if comparison.get("suite") == "exact" else
+         f"- Answer-option ordering seed: {chr(96)}{comparison.get('answer_seed', comparison['seed'])}{chr(96)}"),
         f"- Reference: `{reference}`",
         f"- Quantized candidate: `{candidate}`",
         "",
         "| Metric | Reference | Quantized |",
         "| --- | ---: | ---: |",
         f"| Accuracy | {comparison['reference_accuracy']:.1%} | {comparison['candidate_accuracy']:.1%} |",
+        f"| Invalid response format | {comparison['reference_invalid']} | {comparison['candidate_invalid']} |",
         f"| Mean contiguous depth (0–4) | {comparison['reference_mean_depth']:.2f} | {comparison['candidate_mean_depth']:.2f} |",
         f"| Wall time including model load | {elapsed['reference']:.1f}s | {elapsed['candidate']:.1f}s |",
         "",
@@ -176,7 +181,9 @@ def render_report(comparison, reference, candidate, elapsed):
         "",
         *(f"- `{item}`" for item in comparison["gained"]),
         "",
-        f"This is a {len(comparison['reference_depths']) * 4}-question multiple-choice diagnostic, not a statistically validated claim of improved model quality.",
+        f"This is a {len(comparison['reference_depths']) * 4}-question " + ("open-answer" if comparison.get("suite") == "exact" else "multiple-choice") + " technical diagnostic, not a statistically validated claim of improved model quality.",
+        "Contiguous depth is exploratory and should not be treated as a validated knowledge-depth metric.",
+        "Exact answers can be marked invalid for a missing or ambiguous final value even when the explanation is partially correct.",
         "Wall time includes startup and is not a token/second throughput benchmark.",
         "Questions, model settings, and source weights should be held constant for comparisons.",
         "",
@@ -190,7 +197,7 @@ def main(argv=None):
     parser.add_argument("--candidate", "--quant", required=True, type=Path, dest="candidate")
     parser.add_argument("--llama-server", "--server", default="llama-server", dest="llama_server")
     parser.add_argument("--out", type=Path, default=Path("depth-results"))
-    parser.add_argument("--suite", choices=("ladder", "hard", "classic"), default="ladder")
+    parser.add_argument("--suite", choices=("exact", "ladder", "hard", "classic"), default="exact")
     parser.add_argument("--variants", type=int, default=4, help="Hard: independent generated variants per concept (1-32, default 4)")
     parser.add_argument("--packs", default="all", help="all or comma-separated pack IDs; use --suite classic for tcp/tls13/sqlite")
     parser.add_argument("--seed", type=int, default=17, help="Scenario generation seed")
@@ -232,9 +239,11 @@ def main(argv=None):
             "classic": "0.1.0-classic",
             "hard": "0.2.0-hard",
             "ladder": "0.3.1-ladder",
+            "exact": "0.4.0-exact",
         }[args.suite],
         "suite": args.suite,
-        "scorer_version": "0.3.1",
+        "scorer_version": "0.4.0" if args.suite == "exact" else "0.3.1",
+        "response_mode": "exact" if args.suite == "exact" else "multiple-choice",
         "variants": args.variants,
         "dataset_sha256": fingerprint(items),
         "items": len(items),

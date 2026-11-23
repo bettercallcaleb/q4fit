@@ -1,75 +1,44 @@
-# Knowledge-depth test for GGUF models
+# ConceptLadder: technical scenario benchmark for GGUF models
 
-Q4Fit bundles [ConceptLadder Bench](https://github.com/bettercallcaleb/conceptladder-bench), with three complementary suites:
+Q4Fit bundles four benchmark suites. **Exact v0.4 is the default and recommended one.** Classic v0.1 (36 questions), Hard v0.2 (240 questions), and Ladder v0.3 (240 questions) remain available only to reproduce older multiple-choice runs.
 
-- **Ladder v0.3 (default):** 240 technical scenario questions, with easier L1 entry cases, advanced L2–L4 cases, and independent question-versus-answer-order seeds. Networking, SQLite, Linux and Kubernetes/security.
-- **Hard v0.2:** the original 240 scenarios, unchanged and still available for reproducing old runs.
-- **Classic v0.1:** the original 36 basic questions covering TCP, TLS 1.3, and SQLite.
+Exact uses 240 open-answer scenarios: 15 technical concepts, four nominal levels and four generated parameter variants. Subjects include TCP/IP, DNS, SQLite WAL and window functions, Linux file descriptors/permissions/bitfields, JWT claims, Kubernetes RBAC and scheduling.
 
-The 240-question sets contain 15 underlying concepts, four levels per concept, and four parameter variants. Answers come from executable algorithms or standard-library SQLite/POSIX operations; all options have equal-length strings.
+## Run
 
-The same questions, seed, and inference settings are used for original and quantized GGUF weights.
+Install Q4Fit and build a compatible llama.cpp llama-server. Then run:
 
-## One command
+    q4fit-depth --reference original-f16.gguf --candidate model-Q4_K.gguf       --llama-server ../llama.cpp/build/bin/llama-server --out depth-results
 
-First build `llama-server` in llama.cpp:
+Optional arguments:
+- --suite exact | ladder | hard | classic (default exact)
+- --seed 17: scenario generation seed; use 41 for another generated form
+- --variants 4: parameter versions per concept (1–32)
+- --packs net-hard | db-hard | sys-hard | security-hard for one cluster
+- --inference-seed 17: fixed llama.cpp RNG, independent of scenario generation
+- --max-tokens 64 and --allow-thinking: control answer budget and server thinking mode
+- --ngl 0 to avoid GPU offload
 
-```bash
-cmake --build ../llama.cpp/build --target llama-server -j 4
-```
+Answer-option ordering (--answer-seed) has no effect on Exact because there are no options; it is retained for historical multiple-choice suites.
 
-Then run this from the Q4Fit folder after `pip install -e .`:
+## What it writes
 
-```bash
-q4fit-depth \
-  --reference my-first-q4/original-f16.gguf \
-  --candidate my-first-q4/Qwen3-0.6B-Q4_K.gguf \
-  --llama-server ../llama.cpp/build/bin/llama-server \
-  --out my-first-q4/depth
-```
+- receipt.json: model and server SHA256, source dataset SHA256, suite, inference parameters
+- reference.json and candidate.json: exact raw text and parsed predictions, including invalid responses
+- comparison.json: matched correctness, answer losses/gains, per-concept diagnostics and invalid counts
+- report.md: readable summary
+- reference-server.log, candidate-server.log: llama.cpp logs
 
-This defaults to `--suite ladder --variants 4 --seed 17 --answer-seed 17`, generating 240 questions. To use the previous uncalibrated 240-question version add `--suite hard`; for the old 36 questions use `--suite classic`.
+A valid Exact answer is a decimal, octal, hex, error code, interface name, two-character string or ordered binary mask. Scoring uses strict typed normalization; no LLM judge or numeric-option guessing. A model's explanation without an unambiguous final value can be scored invalid. This is a response-format confound, so review invalid counts.
 
-Use `--seed 41 --answer-seed 17` to generate new questions while preserving answer-position randomization, or `--seed 17 --answer-seed 63` to reorder the answers to exactly the same questions. The model backend RNG uses independent `--inference-seed 17` unless changed explicitly. Keep that fixed for controlled comparisons.
+## Independent adversarial audit
 
-If your build has no GPU, add `--ngl 0`. For Ladder or Hard, select `--packs net-hard`, `--packs db-hard`, `--packs sys-hard`, or `--packs security-hard`. For Classic, use `--packs tcp`, `--packs tls13`, or `--packs sqlite`.
+Ladder v0.3 had a serious flaw: a rule choosing the second-smallest numeric option, without reading the question, scored about 64–65%. Do not rank models using its historical MCQ scores.
 
-For a Q4Fit mixed-precision model, replace `--candidate` with the mixed GGUF file. To compare standard Q4_K against a mixed recipe fairly, run the same original-model reference for each pair and use matching seeds and server settings.
+Exact v0.4 removes answer alternatives, varies more underlying outcomes and uses binary decision masks rather than narrow counts where possible. A no-question, family-and-level most-frequent-answer attack, trained on scenario seeds 17/41, scored 87/720 (12.1%) on held-out seeds 91/123/777.
 
-The command starts one llama-server process at a time, tests the original first and the quant second, and closes each process when finished. It does not upload models or benchmark results.
+In two local RTX4090 Q4 pilots (seeds 17/41; no thinking, temperature 0, 64 output tokens): 4B-class 25/30, 14B 72/81, 32B 91/98 out of 240 per form. The 4B scored roughly at a prompt-blind floor. Even the 32B answered only 12/120 L4 items over the two forms. The four difficulty levels and contiguous-depth metric are NOT independently validated.
 
-## Files produced
+These are different model sizes, not matched original-vs-Q4 pairs. For quantizer evaluation, use the **same underlying model** in high precision and quantized variants, identical prompt/inference parameters, multiple fresh seeds, and paired per-concept analysis. Report accuracy, invalid-format rate and raw answer changes; do not interpret small differences near a low reference score.
 
-| File | Purpose |
-| --- | --- |
-| `receipt.json` | Model file hashes, benchmark fingerprint, inference settings |
-| `reference.json` | Original model's answers |
-| `candidate.json` | Quantized model's answers |
-| `comparison.json` | Per-question losses and gains, accuracy, depth |
-| `report.md` | A readable comparison report |
-| `*-server.log` | llama-server logs for troubleshooting |
-
-## How to read the score
-
-- **Accuracy:** total correct answers / total questions.
-- **Contiguous depth (0–4):** the number of levels passed in order before the first failure, averaged over concepts.
-- **Knowledge-loss rate:** questions the reference answered correctly but the quant got wrong, divided by all questions the reference answered correctly.
-- **Gained answers:** questions the quant got right but the reference got wrong, reported separately.
-
-If a model passes level 1 and 2 but fails level 3, its contiguous depth on that concept is 2, even when it happens to guess level 4 correctly.
-
-This is a *technical diagnostic*, not a validated general-intelligence score. The 25% multiple-choice chance baseline matters: when both models score near it, measuring their knowledge-retention difference is unreliable. Across 240 Hard items, repeated parameter variants are correlated because they share 15 underlying concepts; do not treat them as 240 independent concepts. A one-item flip is not reliable evidence.
-
-In a local Ladder v0.3 pilot, Qwen3-14B Q4 scored 133/240, 125/240 and 118/240 on three question/option forms; Qwen3-32B Q4 scored 120/240, 131/240 and 117/240; a separate 4B-class Q4 scored 88/240, 81/240 and 87/240. Mean accuracy: 52.2%, 51.1%, and 35.6%, respectively. 32B did not consistently outperform 14B. L1→L4 accuracy descended in the 14B aggregate, but the 4B L2/L3 levels still inverted; some individual concepts also invert. Reordering answers alone changed scores by about 3 percentage points. These two different-size models **do not** establish a BF16-to-Q4 retention effect. See the upstream [calibration report](https://github.com/bettercallcaleb/conceptladder-bench/blob/main/docs/LADDER_V03_PILOT.md).
-
-To compare multiple saved results, run `python3 -m conceptladder calibrate path/to/run1.json path/to/run2.json --out calibration.json`. Only compare question-identical runs with the same answer order when attributing item-level changes.
-
-## Practical notes
-
-- Both models must be **GGUF**, preferably from the same original model and revision.
-- The script hashes both GGUF files to capture the exact artifacts.
-- By default thinking is disabled for compatible chat templates; add `--allow-thinking` for models that require reasoning output, and make sure the answer parser can extract a single letter. Plain letters, clearly labeled answers such as `B. the selected option`, and responses that exactly match one option text are accepted. Other unparseable answers count as incorrect; raw outputs are preserved for audit.
-- The default port is `18221`; choose another with `--port` if in use.
-- Existing reports are preserved unless you pass `--overwrite`.
-- The bundled question set has a fixed SHA256. The independent [ConceptLadder repository](https://github.com/bettercallcaleb/conceptladder-bench) remains the upstream benchmark.
-- If a model needs more response budget, pass `--max-tokens 128` and keep it identical across the pair.
+See [upstream Exact audit](https://github.com/bettercallcaleb/conceptladder-bench/blob/main/docs/EXACT_V04_AUDIT.md).
