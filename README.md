@@ -97,6 +97,8 @@ This starts each GGUF in turn, asks the same questions, and writes raw responses
 
 A prompt-blind lookup got 12.1% on unseen Exact scenarios. In a no-thinking local pilot, 4B-class Q4 scored 11.5%, 14B Q4 31.9%, and 32B Q4 39.4%. This is a **stress test**, not a validated intelligence score or proof that one quantizer is better. A near-floor reference model cannot support reliable quantization retention claims. [Method and limitations](docs/KNOWLEDGE_DEPTH.md).
 
+To share a completed depth test with RAMGPT or another research notebook, run `q4fit-evidence --depth-dir depth-results --out depth-results/ramgpt-experiment.json`. It exports model hashes, paired results and evidence fingerprints without local file paths or raw answers. It is **not** a QuantBench verification or a publish action. [Evidence format and workflow](docs/RAMGPT_EVIDENCE.md).
+
 ## What have we measured?
 
 | Model | File size change vs Q4_K | KLD change vs Q4_K on held-out text |

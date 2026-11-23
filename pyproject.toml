@@ -17,9 +17,10 @@ q4fit-scan = "q4scan:main"
 q4fit-tune = "q4tune:main"
 q4fit-tasks = "q4tasks:main"
 q4fit-depth = "q4depth:main"
+q4fit-evidence = "q4evidence:main"
 
 [tool.setuptools]
-py-modules = ["q4fit", "q4search", "q4multi", "q4cache", "q4scan", "q4tune", "q4tasks", "q4depth"]
+py-modules = ["q4fit", "q4search", "q4multi", "q4cache", "q4scan", "q4tune", "q4tasks", "q4depth", "q4evidence"]
 packages = ["conceptladder", "conceptladder.hardcases"]
 
 [tool.setuptools.package-data]

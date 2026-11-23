@@ -7,6 +7,7 @@ from pathlib import Path
 
 from conceptladder.cli import fingerprint, load_packs, materialize, parse_letter, parse_answer, load_suite
 from q4depth import build_comparison, main, render_report
+from q4evidence import build as build_evidence
 
 
 SERVER = r'''#!/usr/bin/env python3
@@ -117,6 +118,10 @@ class DepthTests(unittest.TestCase):
             self.assertEqual(len(comparison["lost"]), 0)
             self.assertEqual(comparison["reference_accuracy"], comparison["candidate_accuracy"])
             self.assertTrue((output / "report.md").is_file())
+            evidence = build_evidence(output)
+            self.assertEqual(evidence["schema"], "ramgpt-experiment-v1")
+            self.assertEqual(evidence["evaluation"]["dataset_sha256"], receipt["dataset_sha256"])
+            self.assertEqual(evidence["results"]["lost_count"], 0)
 
     def test_hard_two_model_end_to_end(self):
         with tempfile.TemporaryDirectory() as tmp:
