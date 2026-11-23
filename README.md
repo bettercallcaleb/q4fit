@@ -1,5 +1,7 @@
 # Q4Fit
 
+**New here? Want to publish your own Q4 model on Hugging Face today?** Follow the plain-English [copy-and-paste beginner guide](docs/MAKE_YOUR_OWN_Q4.md). No research background or GPU required. It downloads an original model, creates a Q4_K GGUF, and optionally uploads it to your own Hugging Face page.
+
 Experimental CLI workbench for BF16-referenced per-tensor GGUF mixed-precision quantization. The tool uses upstream llama.cpp quantizer and perplexity evaluator, and stores auditable tensor recipes and SHA256 receipts.
 
 **Important result:** The original one-chunk v0.1 optimization **failed to generalize** on a larger WikiText-2 test. At comparable size, v0.1 mixed KLD was 0.125771 versus plain Q4_K 0.110148 (lower is better). See [Benchmark protocol](docs/PROTOCOL.md) for the falsification and larger matched evaluations. Never cite the small-sample result alone as evidence of improvement.
