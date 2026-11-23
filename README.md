@@ -79,7 +79,7 @@ python scripts/publish_my_q4.py \
 
 Add `--publish --repo YOUR_USERNAME/Phi-4-mini-Q4Fit-GGUF` to upload it. Recipes are **model-specific**. Do not apply this Phi recipe to a different model.
 
-Q4Fit also supports compatible MoE expert weights. The [Inkling 2 Mini mixed GGUF](benchmarks/INKLING2MINI_PILOT.md) runs successfully, but [measured KLD and speed](benchmarks/INKLING2MINI_VALIDATION.md) show **no advantage over standard Q4_K**. It is an experimental Q3/Q4/Q5 example, not a recommended replacement.
+Q4Fit also supports compatible 3D MoE expert weights. The [Inkling 2 Mini Q3/Q4/Q5 GGUF](https://huggingface.co/ramgpt/Inkling-2-Mini-Q4Fit-MIX-GGUF) is a published example. It runs successfully, including a basic image-input smoke test, but [measured KLD and speed](benchmarks/INKLING2MINI_VALIDATION.md) show **no advantage over standard Q4_K**. It is experimental, not a recommended replacement.
 
 For your own experiments, Q4Fit can compare a quant against the original model, test individual weight changes, and search for combinations that fit a file-size limit. These tools need a high-precision GGUF and sample text for evaluation. See [quantization search](docs/TENSOR_OPTIMIZER.md) and [tensor caching](docs/CACHE.md).
 
@@ -103,14 +103,15 @@ Local 14B and 32B models beat a 4B-class baseline, but 32B did not consistently 
 
 ## What have we measured?
 
-| Model | Extra file size over Q4_K | Difference from the original model on held-out text |
+| Model | File size change vs Q4_K | KLD change vs Q4_K on held-out text |
 | --- | ---: | --- |
 | Qwen3-4B | +0.28% | 16.0% less difference on WikiText; 13.7% less on code |
 | Phi-4-mini-instruct | +0.388% | 4.59% less difference on WikiText; 11.60% less on code |
+| [Inkling 2 Mini MIX](https://huggingface.co/ramgpt/Inkling-2-Mini-Q4Fit-MIX-GGUF) | −0.067% | **2.3% more KLD** on WikiText; **5.8% more** on code (worse) |
 
-These figures use **KLD**, a measure of how closely a quantized model's next-word predictions match its high-precision original. Lower is better **for that measure**. The tests have **not shown a reliable improvement in real task accuracy**. A smaller KLD is not a guarantee of better answers.
+These figures use **KLD**, a measure of how closely a quantized model's next-word predictions match its high-precision original. For Inkling, the reference is a BF16 upcast of the officially released NVFP4/MXFP8 weights, **not an unquantized original checkpoint**. Lower is better **for that measure**. The tests have **not shown a reliable improvement in real task accuracy**. A smaller KLD is not a guarantee of better answers.
 
-Read the [Qwen3 results](benchmarks/QWEN3_4B_TENSOR_SEARCH.md), [Phi-4-mini results](benchmarks/PHI4MINI_EVAL.md), or the [complete research log](docs/RESEARCH_LOG.md), including unsuccessful experiments.
+Read the [Qwen3 results](benchmarks/QWEN3_4B_TENSOR_SEARCH.md), [Phi-4-mini results](benchmarks/PHI4MINI_EVAL.md), [Inkling validation](benchmarks/INKLING2MINI_VALIDATION.md), or the [complete research log](docs/RESEARCH_LOG.md), including unsuccessful experiments.
 
 Q4Fit is an experimental wrapper around upstream quantization tools, not a new training method or a claim of universally superior Q4 models.
 
