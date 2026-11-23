@@ -83,6 +83,24 @@ Q4Fit also supports compatible MoE expert weights. The [Inkling 2 Mini mixed GGU
 
 For your own experiments, Q4Fit can compare a quant against the original model, test individual weight changes, and search for combinations that fit a file-size limit. These tools need a high-precision GGUF and sample text for evaluation. See [quantization search](docs/TENSOR_OPTIMIZER.md) and [tensor caching](docs/CACHE.md).
 
+## Test whether your Q4 kept its knowledge
+
+Q4Fit now includes a small [ConceptLadder Bench](https://github.com/bettercallcaleb/conceptladder-bench) test: **36 questions covering TCP, TLS 1.3, and SQLite**, with four difficulty levels per concept. It compares the same questions on your original GGUF and your Q4 version.
+
+Build the optional llama.cpp server (`cmake --build ../llama.cpp/build --target llama-server -j 4`), then run:
+
+```bash
+q4fit-depth \
+  --reference my-first-q4/original-f16.gguf \
+  --candidate my-first-q4/Qwen3-0.6B-Q4_K.gguf \
+  --llama-server ../llama.cpp/build/bin/llama-server \
+  --out my-first-q4/depth
+```
+
+You'll get a readable `report.md` and JSON records showing accuracy, per-concept depth, which correct answers were lost, and which were gained. Use the same command with a Q4Fit mixed GGUF as the candidate. No additional benchmark package is needed.
+
+This is a **small knowledge-retention diagnostic**, not proof that one quantization is better overall. [How to run it and read the scores](docs/KNOWLEDGE_DEPTH.md).
+
 ## What have we measured?
 
 | Model | Extra file size over Q4_K | Difference from the original model on held-out text |
