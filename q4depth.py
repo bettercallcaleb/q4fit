@@ -45,7 +45,7 @@ def server_command(args, gguf, server, label):
         "--host", "127.0.0.1", "--port", str(args.port),
         "-c", str(args.context), "-np", "1",
         "-ngl", str(args.ngl), "-t", str(args.threads),
-        "--seed", str(args.seed), "--jinja", "--no-webui",
+        "--seed", str(args.inference_seed), "--jinja", "--no-webui",
     ]
     if not args.allow_thinking:
         command += ["--reasoning", "off", "--chat-template-kwargs", '{"enable_thinking":false}']
@@ -88,6 +88,7 @@ def evaluate(args, gguf, label, items, server, folder):
                 timeout=args.request_timeout,
                 max_tokens=args.max_tokens,
                 seed=args.seed,
+                answer_seed=args.answer_seed,
                 delay=0,
                 suite=args.suite,
                 packs=args.packs,
@@ -120,6 +121,7 @@ def build_comparison(reference, candidate, a, b):
         "candidate_model": candidate["model"],
         "dataset_sha256": reference["dataset_sha256"],
         "seed": reference["seed"],
+        "answer_seed": reference.get("answer_seed", reference["seed"]),
         "reference_accuracy": a["accuracy"],
         "candidate_accuracy": b["accuracy"],
         "accuracy_delta": round(b["accuracy"] - a["accuracy"], 6),
@@ -141,7 +143,8 @@ def render_report(comparison, reference, candidate, elapsed):
         "# Q4Fit — ConceptLadder knowledge-depth report",
         "",
         f"- Benchmark dataset SHA256: `{comparison['dataset_sha256']}`",
-        f"- Answer-order seed: `{comparison['seed']}`",
+        f"- Scenario generation seed: `{comparison['seed']}`",
+        f"- Answer-option ordering seed: `{comparison.get('answer_seed', comparison['seed'])}`",
         f"- Reference: `{reference}`",
         f"- Quantized candidate: `{candidate}`",
         "",
@@ -187,10 +190,12 @@ def main(argv=None):
     parser.add_argument("--candidate", "--quant", required=True, type=Path, dest="candidate")
     parser.add_argument("--llama-server", "--server", default="llama-server", dest="llama_server")
     parser.add_argument("--out", type=Path, default=Path("depth-results"))
-    parser.add_argument("--suite", choices=("hard", "classic"), default="hard")
+    parser.add_argument("--suite", choices=("ladder", "hard", "classic"), default="ladder")
     parser.add_argument("--variants", type=int, default=4, help="Hard: independent generated variants per concept (1-32, default 4)")
     parser.add_argument("--packs", default="all", help="all or comma-separated pack IDs; use --suite classic for tcp/tls13/sqlite")
-    parser.add_argument("--seed", type=int, default=17)
+    parser.add_argument("--seed", type=int, default=17, help="Scenario generation seed")
+    parser.add_argument("--answer-seed", type=int, default=None, help="Answer-option permutation seed; defaults to --seed")
+    parser.add_argument("--inference-seed", type=int, default=17, help="Fixed llama.cpp RNG seed, independent of question generation")
     parser.add_argument("--port", type=int, default=18221)
     parser.add_argument("--ngl", type=int, default=99)
     parser.add_argument("--threads", type=int, default=min(os.cpu_count() or 4, 8))
@@ -214,6 +219,8 @@ def main(argv=None):
             parser.error(f"GGUF file not found: {path}")
     server = resolve_server(args.llama_server)
     out = args.out.expanduser().resolve()
+    if args.answer_seed is None:
+        args.answer_seed = args.seed
     items = load_suite(args.suite, args.packs, args.seed, args.variants)
     for name in ("reference.json", "candidate.json", "comparison.json", "report.md", "receipt.json"):
         if (out / name).exists() and not args.overwrite:
@@ -221,7 +228,11 @@ def main(argv=None):
     out.mkdir(parents=True, exist_ok=True)
     receipt = {
         "format": "q4fit-depth-v1",
-        "benchmark": "conceptladder-bench/" + ("0.2.0-hard" if args.suite == "hard" else "0.1.0-classic"),
+        "benchmark": "conceptladder-bench/" + {
+            "classic": "0.1.0-classic",
+            "hard": "0.2.0-hard",
+            "ladder": "0.3.0-ladder",
+        }[args.suite],
         "suite": args.suite,
         "variants": args.variants,
         "dataset_sha256": fingerprint(items),
@@ -231,6 +242,8 @@ def main(argv=None):
         "server": str(server),
         "server_sha256": sha256_file(server),
         "seed": args.seed,
+        "answer_seed": args.answer_seed,
+        "inference_seed": args.inference_seed,
         "packs": args.packs,
         "context": args.context,
         "max_tokens": args.max_tokens,

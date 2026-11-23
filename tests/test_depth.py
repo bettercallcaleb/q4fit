@@ -55,12 +55,16 @@ class DepthTests(unittest.TestCase):
     def test_labeled_answers(self):
         self.assertEqual(parse_letter("B. Readers and one writer can proceed concurrently"), "B")
         self.assertEqual(parse_letter("Answer: A. No; there is still only one writer at a time"), "A")
+        self.assertEqual(parse_letter("B. 1\n\nThe DNS record expired."), "B")
 
     def test_hard_suites(self):
         from conceptladder.cli import load_suite
         items = load_suite("hard", "all", 17, 4)
         self.assertEqual(len(items), 240)
         self.assertEqual(len(load_suite("hard", "security-hard", 17, 2)), 24)
+        ladder = load_suite("ladder", "all", 17, 4)
+        self.assertEqual(len(ladder), 240)
+        self.assertEqual(fingerprint(ladder), "b12651a8b59483e0a8af1f454b2e44e92c4b46c94c5d241b4ed7e6f8749dd62e")
 
     def test_comparison_and_report(self):
         items = load_packs("tcp")
@@ -144,6 +148,43 @@ class DepthTests(unittest.TestCase):
             self.assertEqual(reference["variants"], 1)
             self.assertEqual(len(summary["reference_depths"]), 3)
             self.assertIn("12-question", (output / "report.md").read_text())
+
+    def test_calibrated_default_and_separate_seeds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            original = folder / "original.gguf"
+            candidate = folder / "candidate.gguf"
+            original.write_bytes(b"ladder-base")
+            candidate.write_bytes(b"ladder-quant")
+            server = folder / "fake-server"
+            server.write_text(SERVER, encoding="utf-8")
+            server.chmod(server.stat().st_mode | stat.S_IXUSR)
+            output = folder / "ladder-results"
+            self.assertEqual(main([
+                "--reference", str(original),
+                "--candidate", str(candidate),
+                "--llama-server", str(server),
+                "--out", str(output),
+                "--variants", "1",
+                "--packs", "db-hard",
+                "--seed", "17",
+                "--answer-seed", "63",
+                "--inference-seed", "5",
+                "--port", str(self._unused_port()),
+                "--startup-timeout", "15",
+                "--request-timeout", "5",
+            ]), 0)
+            receipt = json.loads((output / "receipt.json").read_text())
+            run = json.loads((output / "reference.json").read_text())
+            comparison = json.loads((output / "comparison.json").read_text())
+            self.assertEqual(receipt["benchmark"], "conceptladder-bench/0.3.0-ladder")
+            self.assertEqual(receipt["suite"], "ladder")
+            self.assertEqual(receipt["items"], 12)
+            self.assertEqual(receipt["answer_seed"], 63)
+            self.assertEqual(receipt["inference_seed"], 5)
+            self.assertEqual(run["answer_seed"], 63)
+            self.assertEqual(comparison["answer_seed"], 63)
+            self.assertIn("Answer-option ordering seed: `63`", (output / "report.md").read_text())
 
     @staticmethod
     def _unused_port():

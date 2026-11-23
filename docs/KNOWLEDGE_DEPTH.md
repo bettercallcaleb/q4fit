@@ -1,9 +1,12 @@
 # Knowledge-depth test for GGUF models
 
-Q4Fit bundles [ConceptLadder Bench](https://github.com/bettercallcaleb/conceptladder-bench), with two complementary suites:
+Q4Fit bundles [ConceptLadder Bench](https://github.com/bettercallcaleb/conceptladder-bench), with three complementary suites:
 
-- **Hard (default):** 240 deterministic scenarios from 15 technical concepts, each tested at four levels and four parameter variants. Networking, SQLite, Linux, and Kubernetes/security. Expected answers come from executable/algorithmic rules, not from an AI judge. All four answer options have the same number of characters.
-- **Classic:** the previous 36 basic questions covering TCP, TLS 1.3, and SQLite.
+- **Ladder v0.3 (default):** 240 technical scenario questions, with easier L1 entry cases, advanced L2–L4 cases, and independent question-versus-answer-order seeds. Networking, SQLite, Linux and Kubernetes/security.
+- **Hard v0.2:** the original 240 scenarios, unchanged and still available for reproducing old runs.
+- **Classic v0.1:** the original 36 basic questions covering TCP, TLS 1.3, and SQLite.
+
+The 240-question sets contain 15 underlying concepts, four levels per concept, and four parameter variants. Answers come from executable algorithms or standard-library SQLite/POSIX operations; all options have equal-length strings.
 
 The same questions, seed, and inference settings are used for original and quantized GGUF weights.
 
@@ -25,9 +28,11 @@ q4fit-depth \
   --out my-first-q4/depth
 ```
 
-This defaults to `--suite hard --variants 4 --seed 17`, generating 240 questions. To use the old 36 introductory questions, add `--suite classic`.
+This defaults to `--suite ladder --variants 4 --seed 17 --answer-seed 17`, generating 240 questions. To use the previous uncalibrated 240-question version add `--suite hard`; for the old 36 questions use `--suite classic`.
 
-If your build has no GPU, add `--ngl 0`. For Hard, select `--packs net-hard`, `--packs db-hard`, `--packs sys-hard`, or `--packs security-hard`. For Classic, use `--packs tcp`, `--packs tls13`, or `--packs sqlite`.
+Use `--seed 41 --answer-seed 17` to generate new questions while preserving answer-position randomization, or `--seed 17 --answer-seed 63` to reorder the answers to exactly the same questions. The model backend RNG uses independent `--inference-seed 17` unless changed explicitly. Keep that fixed for controlled comparisons.
+
+If your build has no GPU, add `--ngl 0`. For Ladder or Hard, select `--packs net-hard`, `--packs db-hard`, `--packs sys-hard`, or `--packs security-hard`. For Classic, use `--packs tcp`, `--packs tls13`, or `--packs sqlite`.
 
 For a Q4Fit mixed-precision model, replace `--candidate` with the mixed GGUF file. To compare standard Q4_K against a mixed recipe fairly, run the same original-model reference for each pair and use matching seeds and server settings.
 
@@ -55,7 +60,9 @@ If a model passes level 1 and 2 but fails level 3, its contiguous depth on that 
 
 This is a *technical diagnostic*, not a validated general-intelligence score. The 25% multiple-choice chance baseline matters: when both models score near it, measuring their knowledge-retention difference is unreliable. Across 240 Hard items, repeated parameter variants are correlated because they share 15 underlying concepts; do not treat them as 240 independent concepts. A one-item flip is not reliable evidence.
 
-A one-run local pilot with a roughly 4B-class GGUF pair under constrained decoding scored BF16 **96/240 (40.0%)** and Q4_K_M **87/240 (36.3%)**. There were 29 BF16-only correct answers and 20 Q4-only correct answers. These are exploratory, not a statistically established quantization effect. The older Classic suite was nearly saturated by the same model family. Report both, and calibrate Hard against stronger models before using it to rank quantizers.
+In a local Ladder v0.3 pilot, Qwen3-14B Q4 scored 133/240, 125/240 and 118/240 on three question/option forms. A separate 4B-class Q4 model scored 88/240, 81/240 and 87/240. Mean accuracy: 52.2% vs 35.6%. L1→L4 accuracy descended in the 14B aggregate, but the 4B L2/L3 levels still inverted; some individual concepts also invert. Reordering answers alone changed scores by about 3 percentage points. These two different-size models **do not** establish a BF16-to-Q4 retention effect. See the upstream [calibration report](https://github.com/bettercallcaleb/conceptladder-bench/blob/main/docs/LADDER_V03_PILOT.md).
+
+To compare multiple saved results, run `python3 -m conceptladder calibrate path/to/run1.json path/to/run2.json --out calibration.json`. Only compare question-identical runs with the same answer order when attributing item-level changes.
 
 ## Practical notes
 

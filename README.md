@@ -83,23 +83,23 @@ Q4Fit also supports compatible MoE expert weights. The [Inkling 2 Mini mixed GGU
 
 For your own experiments, Q4Fit can compare a quant against the original model, test individual weight changes, and search for combinations that fit a file-size limit. These tools need a high-precision GGUF and sample text for evaluation. See [quantization search](docs/TENSOR_OPTIMIZER.md) and [tensor caching](docs/CACHE.md).
 
-## Knowledge-depth challenge benchmark
+## Check what your Q4 can still answer
 
-Q4Fit bundles [ConceptLadder](https://github.com/bettercallcaleb/conceptladder-bench), including **Hard v0.2: 240 deterministic technical scenarios** across TCP/IP, DNS, SQLite, Linux, JWT, and Kubernetes. The original 36 easier questions remain available.
+Q4Fit includes [ConceptLadder](https://github.com/bettercallcaleb/conceptladder-bench), a 240-question technical benchmark covering TCP/IP, DNS, SQLite, Linux, JWT, and Kubernetes. Its **Ladder v0.3** suite tests simple rules, mechanisms, applied scenarios, and difficult boundary conditions. Answers come from local calculations or executable reference logic, not an AI grader.
 
-After building the optional llama.cpp server (`cmake --build ../llama.cpp/build --target llama-server -j 4`):
+Run the same questions against an original GGUF and your Q4:
 
 ```bash
 q4fit-depth \
-  --reference my-first-q4/original-f16.gguf \
-  --candidate my-first-q4/Qwen3-0.6B-Q4_K.gguf \
+  --reference original-f16.gguf \
+  --candidate model-Q4_K.gguf \
   --llama-server ../llama.cpp/build/bin/llama-server \
-  --out my-first-q4/depth
+  --out depth-results
 ```
 
-The default Hard suite tests **15 concepts × 4 depth levels × 4 variants**. It generates `report.md` plus raw JSON and checksums, including precise answer losses and gains. Use `--suite classic` for the easier 36-question check or `--packs net-hard` for networking alone. No other benchmark installation is required.
+It saves raw responses, paired answer changes, model hashes and a readable report. Use `--suite hard` for the earlier uncalibrated Hard v0.2, or `--suite classic` for the 36-question introduction. You can vary question generation with `--seed` and answer order independently with `--answer-seed`.
 
-A 4B GGUF scored near chance on the Hard suite in an initial pilot; such low-scoring results cannot alone establish which quantization is better. [Instructions and scoring limitations](docs/KNOWLEDGE_DEPTH.md).
+A local 14B calibration pilot showed improving aggregate difficulty levels and higher scores than a 4B model, but individual concepts and answer positions remain noisy. The benchmark is a diagnostic, not proof of quantization quality. [Details and limitations](docs/KNOWLEDGE_DEPTH.md).
 
 ## What have we measured?
 
