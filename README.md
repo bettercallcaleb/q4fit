@@ -83,11 +83,11 @@ Q4Fit also supports compatible MoE expert weights. The [Inkling 2 Mini mixed GGU
 
 For your own experiments, Q4Fit can compare a quant against the original model, test individual weight changes, and search for combinations that fit a file-size limit. These tools need a high-precision GGUF and sample text for evaluation. See [quantization search](docs/TENSOR_OPTIMIZER.md) and [tensor caching](docs/CACHE.md).
 
-## Test whether your Q4 kept its knowledge
+## Knowledge-depth challenge benchmark
 
-Q4Fit now includes a small [ConceptLadder Bench](https://github.com/bettercallcaleb/conceptladder-bench) test: **36 questions covering TCP, TLS 1.3, and SQLite**, with four difficulty levels per concept. It compares the same questions on your original GGUF and your Q4 version.
+Q4Fit bundles [ConceptLadder](https://github.com/bettercallcaleb/conceptladder-bench), including **Hard v0.2: 240 deterministic technical scenarios** across TCP/IP, DNS, SQLite, Linux, JWT, and Kubernetes. The original 36 easier questions remain available.
 
-Build the optional llama.cpp server (`cmake --build ../llama.cpp/build --target llama-server -j 4`), then run:
+After building the optional llama.cpp server (`cmake --build ../llama.cpp/build --target llama-server -j 4`):
 
 ```bash
 q4fit-depth \
@@ -97,9 +97,9 @@ q4fit-depth \
   --out my-first-q4/depth
 ```
 
-You'll get a readable `report.md` and JSON records showing accuracy, per-concept depth, which correct answers were lost, and which were gained. Use the same command with a Q4Fit mixed GGUF as the candidate. No additional benchmark package is needed.
+The default Hard suite tests **15 concepts × 4 depth levels × 4 variants**. It generates `report.md` plus raw JSON and checksums, including precise answer losses and gains. Use `--suite classic` for the easier 36-question check or `--packs net-hard` for networking alone. No other benchmark installation is required.
 
-This is a **small knowledge-retention diagnostic**, not proof that one quantization is better overall. [How to run it and read the scores](docs/KNOWLEDGE_DEPTH.md).
+A 4B GGUF scored near chance on the Hard suite in an initial pilot; such low-scoring results cannot alone establish which quantization is better. [Instructions and scoring limitations](docs/KNOWLEDGE_DEPTH.md).
 
 ## What have we measured?
 

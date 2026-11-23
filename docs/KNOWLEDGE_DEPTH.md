@@ -1,8 +1,11 @@
 # Knowledge-depth test for GGUF models
 
-Q4Fit includes a fixed snapshot of [ConceptLadder Bench](https://github.com/bettercallcaleb/conceptladder-bench): 36 multiple-choice questions across TCP, TLS 1.3, and SQLite.
+Q4Fit bundles [ConceptLadder Bench](https://github.com/bettercallcaleb/conceptladder-bench), with two complementary suites:
 
-The same question set is asked of an original GGUF model and a quantized GGUF model. Each of the nine concepts has four questions, from basic recognition to harder boundary cases.
+- **Hard (default):** 240 deterministic scenarios from 15 technical concepts, each tested at four levels and four parameter variants. Networking, SQLite, Linux, and Kubernetes/security. Expected answers come from executable/algorithmic rules, not from an AI judge. All four answer options have the same number of characters.
+- **Classic:** the previous 36 basic questions covering TCP, TLS 1.3, and SQLite.
+
+The same questions, seed, and inference settings are used for original and quantized GGUF weights.
 
 ## One command
 
@@ -22,7 +25,9 @@ q4fit-depth \
   --out my-first-q4/depth
 ```
 
-If your build has no GPU, add `--ngl 0`. You may restrict to one pack with `--packs tcp`, `--packs tls13`, or `--packs sqlite`.
+This defaults to `--suite hard --variants 4 --seed 17`, generating 240 questions. To use the old 36 introductory questions, add `--suite classic`.
+
+If your build has no GPU, add `--ngl 0`. For Hard, select `--packs net-hard`, `--packs db-hard`, `--packs sys-hard`, or `--packs security-hard`. For Classic, use `--packs tcp`, `--packs tls13`, or `--packs sqlite`.
 
 For a Q4Fit mixed-precision model, replace `--candidate` with the mixed GGUF file. To compare standard Q4_K against a mixed recipe fairly, run the same original-model reference for each pair and use matching seeds and server settings.
 
@@ -33,8 +38,8 @@ The command starts one llama-server process at a time, tests the original first 
 | File | Purpose |
 | --- | --- |
 | `receipt.json` | Model file hashes, benchmark fingerprint, inference settings |
-| `reference.json` | Original model's 36 answers |
-| `candidate.json` | Quantized model's 36 answers |
+| `reference.json` | Original model's answers |
+| `candidate.json` | Quantized model's answers |
 | `comparison.json` | Per-question losses and gains, accuracy, depth |
 | `report.md` | A readable comparison report |
 | `*-server.log` | llama-server logs for troubleshooting |
@@ -48,7 +53,9 @@ The command starts one llama-server process at a time, tests the original first 
 
 If a model passes level 1 and 2 but fails level 3, its contiguous depth on that concept is 2, even when it happens to guess level 4 correctly.
 
-This is a *small diagnostic* with a 25% chance baseline, not a validated general-intelligence score. A single answer flip can be random. Repeat with several seeds and additional unseen questions before claiming one quantization is better.
+This is a *technical diagnostic*, not a validated general-intelligence score. The 25% multiple-choice chance baseline matters: when both models score near it, measuring their knowledge-retention difference is unreliable. Across 240 Hard items, repeated parameter variants are correlated because they share 15 underlying concepts; do not treat them as 240 independent concepts. A one-item flip is not reliable evidence.
+
+A one-run local pilot with a roughly 4B-class GGUF pair under constrained decoding scored BF16 **96/240 (40.0%)** and Q4_K_M **87/240 (36.3%)**. There were 29 BF16-only correct answers and 20 Q4-only correct answers. These are exploratory, not a statistically established quantization effect. The older Classic suite was nearly saturated by the same model family. Report both, and calibrate Hard against stronger models before using it to rank quantizers.
 
 ## Practical notes
 

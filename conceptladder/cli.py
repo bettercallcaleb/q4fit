@@ -62,10 +62,15 @@ def fingerprint(items):
 
 
 def materialize(item, seed):
-    nonce = int.from_bytes(hashlib.sha256(f"{seed}|{item['pack']}|{item['concept']}".encode()).digest()[:8], "big")
-    slots = list(range(4))
-    random.Random(nonce).shuffle(slots)
-    target = slots[item["level"] - 1]
+    if item.get("hard"):
+        digest = hashlib.sha256(f"hard|{seed}|{item['id']}".encode()).digest()
+        nonce = int.from_bytes(digest[:8], "big")
+        target = int.from_bytes(digest[4:12], "big") % 4
+    else:
+        nonce = int.from_bytes(hashlib.sha256(f"{seed}|{item['pack']}|{item['concept']}".encode()).digest()[:8], "big")
+        slots = list(range(4))
+        random.Random(nonce).shuffle(slots)
+        target = slots[item["level"] - 1]
     wrong = list(item["wrong"])
     random.Random(nonce ^ (item["level"] * 65537)).shuffle(wrong)
     choices = wrong[:target] + [item["correct"]] + wrong[target:]
@@ -80,20 +85,26 @@ def parse_letter(content):
         content = " ".join(str(x.get("text", "")) for x in content if isinstance(x, dict))
     if not isinstance(content, str):
         return None
+    final = re.findall(r"(?im)^\s*FINAL\s*:\s*([A-D])\s*$", content)
+    if final:
+        return final[-1].upper()
     match = re.fullmatch(r"\s*(?:(?:answer|option)\s*[:=]\s*)?([A-Da-d])(?:\s*[.)]\s*[^\n]*)?\s*", content, re.I)
     return match.group(1).upper() if match else None
 
 
-def request_answer(url, model, prompt, api_key, timeout, max_tokens):
+def request_answer(url, model, prompt, api_key, timeout, max_tokens, hard=False):
     endpoint = url.rstrip("/")
     if not endpoint.endswith("/chat/completions"):
         endpoint += "/chat/completions"
+    system = ("Examine the technical details, then choose exactly one of A, B, C, D. "
+              "Reply with the uppercase letter only, without explanation.") if hard else (
+                  "Choose the single best answer. Reply with exactly one uppercase letter: A, B, C, or D. No explanation.")
     payload = {
         "model": model,
         "temperature": 0,
         "max_tokens": max_tokens,
         "messages": [
-            {"role": "system", "content": "Choose the single best answer. Reply with exactly one uppercase letter: A, B, C, or D. No explanation."},
+            {"role": "system", "content": system},
             {"role": "user", "content": prompt},
         ],
     }
@@ -158,7 +169,7 @@ def create_run(args, items):
         prompt, _ = materialize(item, args.seed)
         raw = None
         try:
-            raw = request_answer(args.url, args.model, prompt, args.api_key, args.timeout, args.max_tokens)
+            raw = request_answer(args.url, args.model, prompt, args.api_key, args.timeout, args.max_tokens, bool(item.get("hard")))
             pred = parse_letter(raw)
             error = None if pred else "unparseable"
         except (urllib.error.URLError, TimeoutError, ValueError, KeyError) as exc:
@@ -174,6 +185,9 @@ def create_run(args, items):
         "model": args.model,
         "endpoint": args.url,
         "seed": args.seed,
+        "suite": getattr(args, "suite", "classic"),
+        "variants": getattr(args, "variants", 1),
+        "packs": getattr(args, "packs", "all"),
         "dataset_sha256": fingerprint(items),
         "responses": responses,
     }
@@ -197,15 +211,37 @@ def load_run(path):
     return run
 
 
+def load_suite(suite, packs, seed=17, variants=4):
+    if suite == "classic":
+        return load_packs(packs)
+    if suite == "hard":
+        from .hardgen import load_hard
+        return load_hard(seed=seed, variants=variants, selected=packs)
+    raise ValueError("Unknown suite: " + str(suite))
+
+
+def items_for_run(run):
+    packs = {r["id"].split("/")[0] for r in run["responses"]}
+    return load_suite(run.get("suite", "classic"), ",".join(sorted(packs)), run["seed"], run.get("variants", 4))
+
+
 def main():
     parser = argparse.ArgumentParser(prog="conceptladder", description="A compact benchmark for knowledge depth and quantization retention.")
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("list")
     p.add_argument("--packs", default="all")
+    p.add_argument("--suite", choices=["classic", "hard"], default="classic")
+    p.add_argument("--seed", type=int, default=17)
+    p.add_argument("--variants", type=int, default=4)
     p = sub.add_parser("validate")
     p.add_argument("--packs", default="all")
+    p.add_argument("--suite", choices=["classic", "hard"], default="classic")
+    p.add_argument("--seed", type=int, default=17)
+    p.add_argument("--variants", type=int, default=4)
     p = sub.add_parser("run")
     p.add_argument("--packs", default="all")
+    p.add_argument("--suite", choices=["classic", "hard"], default="classic")
+    p.add_argument("--variants", type=int, default=4)
     p.add_argument("--url", default="http://127.0.0.1:8080/v1")
     p.add_argument("--model", required=True)
     p.add_argument("--seed", type=int, default=17)
@@ -223,7 +259,7 @@ def main():
     p.add_argument("--out", default="-")
     args = parser.parse_args()
     if args.command in ("list", "validate", "run"):
-        items = load_packs(args.packs)
+        items = load_suite(args.suite, args.packs, args.seed, args.variants)
     if args.command == "list":
         packs = defaultdict(set)
         for item in items:
@@ -239,8 +275,7 @@ def main():
         print(f"Accuracy {stats['correct']}/{stats['total']}; mean depth {stats['mean_contiguous_depth']:.2f}/4", file=sys.stderr)
     elif args.command == "score":
         result = load_run(args.file)
-        ids = {r["id"].split("/")[0] for r in result["responses"]}
-        items = load_packs(",".join(sorted(ids)))
+        items = items_for_run(result)
         stats = grade(result, items)
         stats.pop("pass")
         write_json(args.out, {"model": result.get("model"), "dataset_sha256": result["dataset_sha256"], **stats})
@@ -249,8 +284,7 @@ def main():
         candidate = load_run(args.candidate)
         if base["dataset_sha256"] != candidate["dataset_sha256"] or base["seed"] != candidate["seed"]:
             raise ValueError("Reference and candidate need matching dataset hashes and seeds")
-        ids = {r["id"].split("/")[0] for r in base["responses"]}
-        items = load_packs(",".join(sorted(ids)))
+        items = items_for_run(base)
         a, b = grade(base, items), grade(candidate, items)
         lost = sorted(k for k in a["pass"] if a["pass"][k] and not b["pass"][k])
         gained = sorted(k for k in a["pass"] if not a["pass"][k] and b["pass"][k])

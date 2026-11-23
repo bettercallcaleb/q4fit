@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "q4fit"
-version = "0.8.2"
+version = "0.9.0"
 description = "BF16-referenced, tensor-wise GGUF mixed-precision experiments"
 requires-python = ">=3.10"
 dependencies = ["gguf>=0.16", "requests>=2.31"]
@@ -20,7 +20,7 @@ q4fit-depth = "q4depth:main"
 
 [tool.setuptools]
 py-modules = ["q4fit", "q4search", "q4multi", "q4cache", "q4scan", "q4tune", "q4tasks", "q4depth"]
-packages = ["conceptladder"]
+packages = ["conceptladder", "conceptladder.hardcases"]
 
 [tool.setuptools.package-data]
 conceptladder = ["packs/*.json", "VENDOR.md"]
