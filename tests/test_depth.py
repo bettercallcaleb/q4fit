@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from conceptladder.cli import fingerprint, load_packs, materialize, parse_letter
+from conceptladder.cli import fingerprint, load_packs, materialize, parse_letter, parse_answer, load_suite
 from q4depth import build_comparison, main, render_report
 
 
@@ -56,6 +56,9 @@ class DepthTests(unittest.TestCase):
         self.assertEqual(parse_letter("B. Readers and one writer can proceed concurrently"), "B")
         self.assertEqual(parse_letter("Answer: A. No; there is still only one writer at a time"), "A")
         self.assertEqual(parse_letter("B. 1\n\nThe DNS record expired."), "B")
+        error_case = next(i for i in load_suite("ladder", "db-hard", 17, 1) if i["concept"].startswith("sqlite-wal-snapshots") and i["level"]==3)
+        self.assertEqual(parse_answer("0517", error_case, 17), materialize(error_case,17)[1])
+        self.assertIsNone(parse_answer("0517 and explanation", error_case,17))
 
     def test_hard_suites(self):
         from conceptladder.cli import load_suite
@@ -177,7 +180,8 @@ class DepthTests(unittest.TestCase):
             receipt = json.loads((output / "receipt.json").read_text())
             run = json.loads((output / "reference.json").read_text())
             comparison = json.loads((output / "comparison.json").read_text())
-            self.assertEqual(receipt["benchmark"], "conceptladder-bench/0.3.0-ladder")
+            self.assertEqual(receipt["benchmark"], "conceptladder-bench/0.3.1-ladder")
+            self.assertEqual(receipt["scorer_version"], "0.3.1")
             self.assertEqual(receipt["suite"], "ladder")
             self.assertEqual(receipt["items"], 12)
             self.assertEqual(receipt["answer_seed"], 63)

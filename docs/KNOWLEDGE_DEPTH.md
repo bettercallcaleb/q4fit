@@ -60,7 +60,7 @@ If a model passes level 1 and 2 but fails level 3, its contiguous depth on that 
 
 This is a *technical diagnostic*, not a validated general-intelligence score. The 25% multiple-choice chance baseline matters: when both models score near it, measuring their knowledge-retention difference is unreliable. Across 240 Hard items, repeated parameter variants are correlated because they share 15 underlying concepts; do not treat them as 240 independent concepts. A one-item flip is not reliable evidence.
 
-In a local Ladder v0.3 pilot, Qwen3-14B Q4 scored 133/240, 125/240 and 118/240 on three question/option forms. A separate 4B-class Q4 model scored 88/240, 81/240 and 87/240. Mean accuracy: 52.2% vs 35.6%. L1→L4 accuracy descended in the 14B aggregate, but the 4B L2/L3 levels still inverted; some individual concepts also invert. Reordering answers alone changed scores by about 3 percentage points. These two different-size models **do not** establish a BF16-to-Q4 retention effect. See the upstream [calibration report](https://github.com/bettercallcaleb/conceptladder-bench/blob/main/docs/LADDER_V03_PILOT.md).
+In a local Ladder v0.3 pilot, Qwen3-14B Q4 scored 133/240, 125/240 and 118/240 on three question/option forms; Qwen3-32B Q4 scored 120/240, 131/240 and 117/240; a separate 4B-class Q4 scored 88/240, 81/240 and 87/240. Mean accuracy: 52.2%, 51.1%, and 35.6%, respectively. 32B did not consistently outperform 14B. L1→L4 accuracy descended in the 14B aggregate, but the 4B L2/L3 levels still inverted; some individual concepts also invert. Reordering answers alone changed scores by about 3 percentage points. These two different-size models **do not** establish a BF16-to-Q4 retention effect. See the upstream [calibration report](https://github.com/bettercallcaleb/conceptladder-bench/blob/main/docs/LADDER_V03_PILOT.md).
 
 To compare multiple saved results, run `python3 -m conceptladder calibrate path/to/run1.json path/to/run2.json --out calibration.json`. Only compare question-identical runs with the same answer order when attributing item-level changes.
 
@@ -68,7 +68,7 @@ To compare multiple saved results, run `python3 -m conceptladder calibrate path/
 
 - Both models must be **GGUF**, preferably from the same original model and revision.
 - The script hashes both GGUF files to capture the exact artifacts.
-- By default thinking is disabled for compatible chat templates; add `--allow-thinking` for models that require reasoning output, and make sure the answer parser can extract a single letter. Plain letters and clearly labeled answers such as `B. the selected option` are accepted. Other unparseable answers count as incorrect; raw outputs are preserved for audit.
+- By default thinking is disabled for compatible chat templates; add `--allow-thinking` for models that require reasoning output, and make sure the answer parser can extract a single letter. Plain letters, clearly labeled answers such as `B. the selected option`, and responses that exactly match one option text are accepted. Other unparseable answers count as incorrect; raw outputs are preserved for audit.
 - The default port is `18221`; choose another with `--port` if in use.
 - Existing reports are preserved unless you pass `--overwrite`.
 - The bundled question set has a fixed SHA256. The independent [ConceptLadder repository](https://github.com/bettercallcaleb/conceptladder-bench) remains the upstream benchmark.

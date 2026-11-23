@@ -99,7 +99,7 @@ q4fit-depth \
 
 It saves raw responses, paired answer changes, model hashes and a readable report. Use `--suite hard` for the earlier uncalibrated Hard v0.2, or `--suite classic` for the 36-question introduction. You can vary question generation with `--seed` and answer order independently with `--answer-seed`.
 
-A local 14B calibration pilot showed improving aggregate difficulty levels and higher scores than a 4B model, but individual concepts and answer positions remain noisy. The benchmark is a diagnostic, not proof of quantization quality. [Details and limitations](docs/KNOWLEDGE_DEPTH.md).
+Local 14B and 32B models beat a 4B-class baseline, but 32B did not consistently outperform 14B. Difficulty levels now descend in the larger-model aggregate, though individual concepts and answer positions remain noisy. The benchmark is a diagnostic, not proof of quantization quality. [Details and limitations](docs/KNOWLEDGE_DEPTH.md).
 
 ## What have we measured?
 

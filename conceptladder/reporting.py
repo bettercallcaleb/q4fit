@@ -3,7 +3,7 @@ from collections import defaultdict
 from itertools import combinations
 from pathlib import Path
 
-from .cli import grade, items_for_run, load_run, materialize, parse_letter
+from .cli import grade, items_for_run, load_run, materialize, parse_answer
 
 
 def inspect_runs(paths, reparse_raw=True):
@@ -19,11 +19,12 @@ def inspect_runs(paths, reparse_raw=True):
         elif shape != suite_shape:
             raise ValueError("Calibration runs must use the same suite, pack selection, and question count")
         if reparse_raw:
+            item_by_id = {item["id"]:item for item in items}
             run = dict(run)
             run["responses"] = [dict(row) for row in run["responses"]]
             for row in run["responses"]:
                 if row.get("prediction") is None and row.get("raw_response"):
-                    repaired = parse_letter(row["raw_response"])
+                    repaired = parse_answer(row["raw_response"], item_by_id[row["id"]], run.get("answer_seed",run["seed"]))
                     if repaired:
                         row["prediction"] = repaired
                         row["error"] = None
