@@ -19,6 +19,22 @@ def checksum(path):
             h.update(block)
     return h.hexdigest()
 
+def lock_source_version(out, model, revision):
+    lock = out / "source-version.json"
+    wanted = {"model": model, "revision": revision}
+    if lock.exists():
+        previous = json.loads(lock.read_text(encoding="utf-8"))
+        if previous != wanted:
+            raise RuntimeError("The original model version changed. Use a NEW --output-dir to prevent mixing models.")
+    elif (out / "original-f16.gguf").exists():
+        receipt = out / "publish-receipt.json"
+        if not receipt.exists():
+            raise RuntimeError("Existing original-f16.gguf has no version record. Use a NEW --output-dir.")
+        previous = json.loads(receipt.read_text(encoding="utf-8"))
+        if previous.get("source_model") != model or previous.get("source_revision") != revision:
+            raise RuntimeError("Existing GGUF belongs to a different source version. Use a NEW --output-dir.")
+    lock.write_text(json.dumps(wanted, indent=2) + "\n", encoding="utf-8")
+
 def main():
     p = argparse.ArgumentParser(description="Download an original Hugging Face model, make a Q4 GGUF, and optionally publish it.")
     p.add_argument("--model", required=True, help="Original Hugging Face model, e.g. Qwen/Qwen3-0.6B")
@@ -50,6 +66,7 @@ def main():
     source_revision = info.sha
     out = a.output_dir.expanduser().resolve()
     out.mkdir(parents=True, exist_ok=True)
+    lock_source_version(out, a.model, source_revision)
     source = out / "original"
     print("Step 1/4: Downloading original model (this may take a while).", flush=True)
     snapshot_download(
@@ -82,9 +99,11 @@ def main():
             command.extend(["--set", pattern + "=" + kind.upper()])
     run(command)
     digest = checksum(output)
+    original_license = info.card_data.get("license") if hasattr(info.card_data, "get") else None
+    license_metadata = "license: " + json.dumps(original_license) + "\n" if isinstance(original_license, str) and original_license else ""
     card = f"""---
 base_model: {a.model}
-library_name: gguf
+{license_metadata}library_name: gguf
 tags:
 - gguf
 - quantized

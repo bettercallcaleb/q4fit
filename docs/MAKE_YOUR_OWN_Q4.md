@@ -18,7 +18,7 @@ git clone https://github.com/bettercallcaleb/q4fit
 cd q4fit
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install -e . "huggingface-hub" "transformers" "sentencepiece" "protobuf" "safetensors"
+python -m pip install -e . -r ../llama.cpp/requirements/requirements-convert_hf_to_gguf.txt
 ```
 
 ## 2. Make your first Q4
