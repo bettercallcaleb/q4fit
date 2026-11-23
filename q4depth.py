@@ -231,9 +231,10 @@ def main(argv=None):
         "benchmark": "conceptladder-bench/" + {
             "classic": "0.1.0-classic",
             "hard": "0.2.0-hard",
-            "ladder": "0.3.0-ladder",
+            "ladder": "0.3.1-ladder",
         }[args.suite],
         "suite": args.suite,
+        "scorer_version": "0.3.1",
         "variants": args.variants,
         "dataset_sha256": fingerprint(items),
         "items": len(items),

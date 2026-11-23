@@ -2,7 +2,7 @@
 
 Source: https://github.com/bettercallcaleb/conceptladder-bench
 
-Snapshot: 3ebab12607687761d20ca0bfb01e079e7095b838 (2026-11-23)
+Snapshot: 5870e62853a409e8635f810c748d9c2b2ce59181 (2026-11-23)
 
 License: MIT. Copyright (c) 2026 ConceptLadder Bench contributors.
 

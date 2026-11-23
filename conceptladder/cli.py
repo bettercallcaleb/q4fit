@@ -96,6 +96,20 @@ def parse_letter(content):
     return match.group(1).upper() if match else None
 
 
+def parse_answer(content, item, answer_seed):
+    label = parse_letter(content)
+    if label is not None:
+        return label
+    if not isinstance(content, str) or not content.strip():
+        return None
+    stem, _ = materialize(item, answer_seed)
+    for line in stem.splitlines()[-4:]:
+        match = re.fullmatch(r"([A-D])\. (.+)", line)
+        if match and content.strip() == match.group(2).strip():
+            return match.group(1)
+    return None
+
+
 def request_answer(url, model, prompt, api_key, timeout, max_tokens, hard=False):
     endpoint = url.rstrip("/")
     if not endpoint.endswith("/chat/completions"):
@@ -174,7 +188,7 @@ def create_run(args, items):
         raw = None
         try:
             raw = request_answer(args.url, args.model, prompt, args.api_key, args.timeout, args.max_tokens, bool(item.get("hard")))
-            pred = parse_letter(raw)
+            pred = parse_answer(raw, item, getattr(args, "answer_seed", None) if getattr(args, "answer_seed", None) is not None else args.seed)
             error = None if pred else "unparseable"
         except (urllib.error.URLError, TimeoutError, ValueError, KeyError) as exc:
             pred = None
