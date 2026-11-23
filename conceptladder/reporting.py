@@ -41,8 +41,9 @@ def inspect_runs(paths, reparse_raw=True):
             correct_by_family[family][0] += yes
             correct_by_family[family][1] += 1
             answer = materialize(item, run.get("answer_seed", run["seed"]))[1]
-            answers[answer][0] += int(preds[item["id"]] == answer)
-            answers[answer][1] += 1
+            if item.get("response_mode") != "exact":
+                answers[answer][0] += int(preds[item["id"]] == answer)
+                answers[answer][1] += 1
         entry = {
             "path": str(path),
             "model": run["model"],

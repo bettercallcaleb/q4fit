@@ -62,6 +62,8 @@ def fingerprint(items):
 
 
 def materialize(item, seed):
+    if item.get("response_mode") == "exact":
+        return item["prompt"], item["correct"]
     if item.get("hard"):
         digest = hashlib.sha256(f"hard|{seed}|{item['id']}".encode()).digest()
         nonce = int.from_bytes(digest[:8], "big")
@@ -97,6 +99,9 @@ def parse_letter(content):
 
 
 def parse_answer(content, item, answer_seed):
+    if item.get("response_mode") == "exact":
+        from .exact import parse_exact_response
+        return parse_exact_response(content, item)
     label = parse_letter(content)
     if label is not None:
         return label
@@ -110,13 +115,18 @@ def parse_answer(content, item, answer_seed):
     return None
 
 
-def request_answer(url, model, prompt, api_key, timeout, max_tokens, hard=False):
+def request_answer(url, model, prompt, api_key, timeout, max_tokens, hard=False, exact=False):
     endpoint = url.rstrip("/")
     if not endpoint.endswith("/chat/completions"):
         endpoint += "/chat/completions"
-    system = ("Examine the technical details, then choose exactly one of A, B, C, D. "
-              "Reply with the uppercase letter only, without explanation.") if hard else (
-                  "Choose the single best answer. Reply with exactly one uppercase letter: A, B, C, or D. No explanation.")
+    if exact:
+        system = ("Calculate the exact answer. Output only the final value, without a label, "
+                  "explanation, units, or surrounding punctuation. Do not invent multiple-choice letters.")
+    elif hard:
+        system = ("Examine the technical details, then choose exactly one of A, B, C, D. "
+                  "Reply with the uppercase letter only, without explanation.")
+    else:
+        system = "Choose the single best answer. Reply with exactly one uppercase letter: A, B, C, or D. No explanation."
     payload = {
         "model": model,
         "temperature": 0,
@@ -150,12 +160,20 @@ def grade(run, items):
     for item in items:
         row = got[item["id"]]
         pred = row.get("prediction")
-        if pred not in ("A", "B", "C", "D", None):
+        if item.get("response_mode") == "exact":
+            from .exact import normalize_exact
+            if pred is not None and normalize_exact(pred, item["answer_format"]) is None:
+                raise ValueError("Invalid exact prediction: " + item["id"])
+        elif pred not in ("A", "B", "C", "D", None):
             raise ValueError("Invalid prediction: " + item["id"])
         if pred is None:
             invalid += 1
         _, answer = materialize(item, run.get("answer_seed", run["seed"]))
-        passed = pred == answer
+        if item.get("response_mode") == "exact":
+            from .exact import normalize_exact
+            passed = pred is not None and normalize_exact(pred, item["answer_format"]) == normalize_exact(answer, item["answer_format"])
+        else:
+            passed = pred == answer
         correct[item["id"]] = passed
         per_pack[item["pack"]]["correct"] += int(passed)
         per_pack[item["pack"]]["total"] += 1
@@ -187,7 +205,7 @@ def create_run(args, items):
         prompt, _ = materialize(item, getattr(args, "answer_seed", None) if getattr(args, "answer_seed", None) is not None else args.seed)
         raw = None
         try:
-            raw = request_answer(args.url, args.model, prompt, args.api_key, args.timeout, args.max_tokens, bool(item.get("hard")))
+            raw = request_answer(args.url, args.model, prompt, args.api_key, args.timeout, args.max_tokens, bool(item.get("hard")), item.get("response_mode") == "exact")
             pred = parse_answer(raw, item, getattr(args, "answer_seed", None) if getattr(args, "answer_seed", None) is not None else args.seed)
             error = None if pred else "unparseable"
         except (urllib.error.URLError, TimeoutError, ValueError, KeyError) as exc:
@@ -239,6 +257,9 @@ def load_suite(suite, packs, seed=17, variants=4):
     if suite == "ladder":
         from .calibrated import load_ladder
         return load_ladder(seed=seed, variants=variants, selected=packs)
+    if suite == "exact":
+        from .exact import load_exact
+        return load_exact(seed=seed, variants=variants, selected=packs)
     raise ValueError("Unknown suite: " + str(suite))
 
 
@@ -252,17 +273,17 @@ def main():
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("list")
     p.add_argument("--packs", default="all")
-    p.add_argument("--suite", choices=["classic", "hard", "ladder"], default="classic")
+    p.add_argument("--suite", choices=["classic", "hard", "ladder", "exact"], default="classic")
     p.add_argument("--seed", type=int, default=17)
     p.add_argument("--variants", type=int, default=4)
     p = sub.add_parser("validate")
     p.add_argument("--packs", default="all")
-    p.add_argument("--suite", choices=["classic", "hard", "ladder"], default="classic")
+    p.add_argument("--suite", choices=["classic", "hard", "ladder", "exact"], default="classic")
     p.add_argument("--seed", type=int, default=17)
     p.add_argument("--variants", type=int, default=4)
     p = sub.add_parser("run")
     p.add_argument("--packs", default="all")
-    p.add_argument("--suite", choices=["classic", "hard", "ladder"], default="classic")
+    p.add_argument("--suite", choices=["classic", "hard", "ladder", "exact"], default="classic")
     p.add_argument("--variants", type=int, default=4)
     p.add_argument("--url", default="http://127.0.0.1:8080/v1")
     p.add_argument("--model", required=True)
@@ -273,6 +294,12 @@ def main():
     p.add_argument("--max-tokens", type=int, default=32)
     p.add_argument("--delay", type=float, default=0)
     p.add_argument("--out", required=True)
+    p = sub.add_parser("blind-audit")
+    p.add_argument("--train-seeds", default="17,41")
+    p.add_argument("--test-seeds", default="91,123,777")
+    p.add_argument("--variants", type=int, default=4)
+    p.add_argument("--packs", default="all")
+    p.add_argument("--out", default="-")
     p = sub.add_parser("score")
     p.add_argument("file")
     p.add_argument("--out", default="-")
@@ -300,6 +327,11 @@ def main():
         write_json(args.out, result)
         stats = grade(result, items)
         print(f"Accuracy {stats['correct']}/{stats['total']}; mean depth {stats['mean_contiguous_depth']:.2f}/4", file=sys.stderr)
+    elif args.command == "blind-audit":
+        from .audit import blind_audit
+        train = [int(x) for x in args.train_seeds.split(",")]
+        test = [int(x) for x in args.test_seeds.split(",")]
+        write_json(args.out, blind_audit(train, test, args.variants, args.packs))
     elif args.command == "score":
         result = load_run(args.file)
         items = items_for_run(result)

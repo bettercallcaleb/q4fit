@@ -85,21 +85,17 @@ For your own experiments, Q4Fit can compare a quant against the original model, 
 
 ## Check what your Q4 can still answer
 
-Q4Fit includes [ConceptLadder](https://github.com/bettercallcaleb/conceptladder-bench), a 240-question technical benchmark covering TCP/IP, DNS, SQLite, Linux, JWT, and Kubernetes. Its **Ladder v0.3** suite tests simple rules, mechanisms, applied scenarios, and difficult boundary conditions. Answers come from local calculations or executable reference logic, not an AI grader.
+Q4Fit includes [ConceptLadder Exact v0.4](https://github.com/bettercallcaleb/conceptladder-bench), a 240-question technical scenario benchmark for TCP/IP, DNS, SQLite, Linux, JWT and Kubernetes.
 
-Run the same questions against an original GGUF and your Q4:
+Unlike the older multiple-choice version, Exact gives the model **no answer options**. It must calculate a precise value or choose which individual records/requests/nodes meet the conditions. The original multiple-choice benchmark was vulnerable to a trivial answer-ordering exploit and should not be used for new model rankings.
 
-```bash
-q4fit-depth \
-  --reference original-f16.gguf \
-  --candidate model-Q4_K.gguf \
-  --llama-server ../llama.cpp/build/bin/llama-server \
-  --out depth-results
-```
+From your Q4Fit working directory:
 
-It saves raw responses, paired answer changes, model hashes and a readable report. Use `--suite hard` for the earlier uncalibrated Hard v0.2, or `--suite classic` for the 36-question introduction. You can vary question generation with `--seed` and answer order independently with `--answer-seed`.
+    q4fit-depth --reference original-f16.gguf --candidate model-Q4_K.gguf --llama-server ../llama.cpp/build/bin/llama-server --out depth-results
 
-Local 14B and 32B models beat a 4B-class baseline, but 32B did not consistently outperform 14B. Difficulty levels now descend in the larger-model aggregate, though individual concepts and answer positions remain noisy. The benchmark is a diagnostic, not proof of quantization quality. [Details and limitations](docs/KNOWLEDGE_DEPTH.md).
+This starts each GGUF in turn, asks the same questions, and writes raw responses, accuracy, response-format failures, per-item answer flips, and file hashes. Use --seed 41 to try new scenarios, or --suite ladder, --suite hard, or --suite classic to reproduce earlier experiments.
+
+A prompt-blind lookup got 12.1% on unseen Exact scenarios. In a no-thinking local pilot, 4B-class Q4 scored 11.5%, 14B Q4 31.9%, and 32B Q4 39.4%. This is a **stress test**, not a validated intelligence score or proof that one quantizer is better. A near-floor reference model cannot support reliable quantization retention claims. [Method and limitations](docs/KNOWLEDGE_DEPTH.md).
 
 ## What have we measured?
 
