@@ -1,0 +1,20 @@
+{
+  "project": "Inkling 2 Mini mixed-bit GGUF pilot",
+  "source_model": "thinkingmachines/Inkling-2-Mini",
+  "source_gguf": "ggml-org/Inkling-2-Mini-GGUF/Inkling-2-Mini-BF16.gguf",
+  "source_gguf_revision": "e8a2cecf0e78914f07cc27b9be711a9b2c7561d9",
+  "source_caveat": "The BF16 GGUF is an upcast of mixed NVFP4/MXFP8 official weights, not a pristine original-BF16 checkpoint.",
+  "baseline": "Q4_K with --pure; actual fallback types must be recorded",
+  "candidate": {
+    "default": "Q4_K",
+    "overrides": {
+      "blk.0.ffn_gate_up_exps.weight": "Q3_K",
+      "blk.1.ffn_gate_up_exps.weight": "Q3_K",
+      "blk.6.ffn_gate_up_exps.weight": "Q5_K",
+      "blk.12.ffn_gate_up_exps.weight": "Q5_K"
+    }
+  },
+  "rationale": "Shift some bits from two non-repeated early MoE expert layers to layers 6 and 12 in the 3-pass loop. Equal tensor shapes yield a roughly size-neutral allocation.",
+  "validity": "Exploratory allocation, not an optimized or preregistered quality winner. Verify actual tensor types, output file size, basic inference and BF16-reference KLD if possible before claiming any benefit.",
+  "no_auto_publish": true
+}
