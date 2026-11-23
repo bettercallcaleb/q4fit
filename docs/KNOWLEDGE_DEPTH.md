@@ -54,7 +54,7 @@ This is a *small diagnostic* with a 25% chance baseline, not a validated general
 
 - Both models must be **GGUF**, preferably from the same original model and revision.
 - The script hashes both GGUF files to capture the exact artifacts.
-- By default thinking is disabled for compatible chat templates; add `--allow-thinking` for models that require reasoning output, and make sure the answer parser can extract a single letter. Unparseable answers count as incorrect.
+- By default thinking is disabled for compatible chat templates; add `--allow-thinking` for models that require reasoning output, and make sure the answer parser can extract a single letter. Plain letters and clearly labeled answers such as `B. the selected option` are accepted. Other unparseable answers count as incorrect; raw outputs are preserved for audit.
 - The default port is `18221`; choose another with `--port` if in use.
 - Existing reports are preserved unless you pass `--overwrite`.
 - The bundled question set has a fixed SHA256. The independent [ConceptLadder repository](https://github.com/bettercallcaleb/conceptladder-bench) remains the upstream benchmark.

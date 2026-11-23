@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "q4fit"
-version = "0.8.1"
+version = "0.8.2"
 description = "BF16-referenced, tensor-wise GGUF mixed-precision experiments"
 requires-python = ">=3.10"
 dependencies = ["gguf>=0.16", "requests>=2.31"]
