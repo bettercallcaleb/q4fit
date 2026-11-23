@@ -1,0 +1,50 @@
+{
+  "description": "Small functional smoke test, not an accuracy benchmark",
+  "model": "Inkling-2-Mini",
+  "prompts": [
+    {
+      "prompt": "What is 2 + 2? Answer with the numeral only.",
+      "pure_q4": "4",
+      "q4fit_mix": "4"
+    },
+    {
+      "prompt": "Translate good morning into Spanish. Reply with only the translation.",
+      "pure_q4": "Buenos días",
+      "q4fit_mix": "buenos días"
+    },
+    {
+      "prompt": "What single command lists files in a Linux directory? Reply with the command.",
+      "pure_q4": "ls",
+      "q4fit_mix": "ls"
+    },
+    {
+      "prompt": "A train departs at 2:15 pm and arrives at 3:05 pm. How many minutes is the journey? Number only.",
+      "pure_q4": "50",
+      "q4fit_mix": "50"
+    },
+    {
+      "prompt": "What does DNS stand for? Reply with the expansion only.",
+      "pure_q4": "Domain Name System",
+      "q4fit_mix": "Domain Name System"
+    },
+    {
+      "prompt": "Write a Python expression for the square of variable x. Expression only.",
+      "pure_q4": "x ** 2",
+      "q4fit_mix": "x**2"
+    },
+    {
+      "prompt": "中文：7乘以8等于多少？只写数字。",
+      "pure_q4": "56",
+      "q4fit_mix": "56"
+    },
+    {
+      "prompt": "Return valid JSON with keys a and b, set to 1 and 2. No Markdown.",
+      "pure_q4": "{\"a\":1,\"b\":2}",
+      "q4fit_mix": "{\"a\":1,\"b\":2}"
+    }
+  ],
+  "image_prompt": {
+    "fixture": "128x128 solid red square",
+    "q4fit_mix": "red"
+  }
+}

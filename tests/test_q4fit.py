@@ -13,6 +13,25 @@ class TestQ4Fit(unittest.TestCase):
             dict(name="blk.0.attn_norm.weight", shape=[256], n=256, bytes=1024, source="F32", eligible=False),
         ]
 
+    def test_inkling_moe_expert_tensor(self):
+        shape = [256, 1024, 128]
+        self.assertTrue(q4fit.eligible_tensor('blk.6.ffn_gate_up_exps.weight', shape, 'BF16'))
+        self.assertTrue(q4fit.eligible_tensor('blk.6.ffn_down_exps.weight', shape, 'F16'))
+        self.assertFalse(q4fit.eligible_tensor('blk.6.ffn_gate_inp.weight', shape, 'BF16'))
+        self.assertFalse(q4fit.eligible_tensor('blk.6.ffn_down_exps.weight', shape, 'Q4_K'))
+        self.assertFalse(q4fit.eligible_tensor('blk.6.ffn_down_exps.weight', [255, 1024, 128], 'BF16'))
+        t = dict(name='blk.6.ffn_down_exps.weight', shape=shape, n=256*1024*128, bytes=256*1024*128*2, source='BF16', eligible=True)
+        self.assertEqual(q4fit.quant_bytes(t, 'Q4_K'), 256*1024*128//256*144)
+        self.assertEqual(q4fit.override_map([t], [r'^blk\.6\.ffn_down_exps\.weight$=Q5_K'])[t['name']], 'Q5_K')
+
+    def test_inkling_moe_q4_fallback_estimate(self):
+        shape = [1152, 2304, 128]
+        n = 1152 * 2304 * 128
+        t = dict(name='blk.6.ffn_down_exps.weight', shape=shape, n=n, bytes=n*2, source='BF16', eligible=False)
+        self.assertEqual(q4fit.quant_bytes(t, 'Q4_K'), n // 32 * 22)
+        self.assertEqual(q4fit.quant_bytes(t, 'Q8_0'), n // 32 * 34)
+        self.assertEqual(q4fit.quant_bytes(t, 'F16'), n * 2)
+
     def test_size(self):
         self.assertEqual(q4fit.quant_bytes(self.ts[0], "Q4_K"), 147456)
         self.assertEqual(q4fit.quant_bytes(self.ts[0], "Q5_K"), 180224)

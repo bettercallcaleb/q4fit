@@ -20,6 +20,8 @@ GROUPS = {
     "ffn_gate": r"\.ffn_gate\.weight$",
     "ffn_up": r"\.ffn_up\.weight$",
     "ffn_down": r"\.ffn_down\.weight$",
+    "moe_expert_up": r"\.ffn_gate_up_exps\.weight$",
+    "moe_expert_down": r"\.ffn_down_exps\.weight$",
 }
 
 def digest(path):
@@ -28,6 +30,10 @@ def digest(path):
         for b in iter(lambda: f.read(8 * 1024 * 1024), b""):
             h.update(b)
     return h.hexdigest()
+
+def eligible_tensor(name, shape, typ):
+    is_matrix = len(shape) == 2 or (len(shape) == 3 and re.search(r"\.ffn_(?:gate_up|down)_exps\.weight$", name))
+    return bool(is_matrix and shape[0] % 256 == 0 and typ in ("BF16", "F16", "F32"))
 
 def inventory(path):
     from gguf import GGUFReader, GGMLQuantizationType
@@ -39,12 +45,19 @@ def inventory(path):
         for x in shape:
             n *= x
         typ = GGMLQuantizationType(t.tensor_type).name
-        eligible = len(shape) == 2 and shape[0] % 256 == 0 and typ in ("BF16", "F16", "F32")
+        eligible = eligible_tensor(t.name, shape, typ)
         result.append(dict(name=t.name, shape=shape, n=n, source=typ, bytes=int(t.n_bytes), eligible=eligible))
     return result
 
 def quant_bytes(t, typ):
     if not t["eligible"]:
+        shape = t["shape"]
+        if (len(shape) == 3 and t["name"].endswith(".ffn_down_exps.weight") and
+                t["source"] in ("BF16", "F16", "F32") and shape[0] % 32 == 0 and shape[0] % 256 != 0):
+            if typ in ("Q3_K", "Q4_K", "Q5_K", "Q6_K"):
+                return t["n"] // 32 * 22
+            if typ == "Q8_0":
+                return t["n"] // 32 * 34
         return t["bytes"]
     block, size = BLOCKS[typ]
     if t["shape"][0] % block:

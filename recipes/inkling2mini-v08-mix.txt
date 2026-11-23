@@ -1,0 +1,4 @@
+blk.0.ffn_gate_up_exps.weight=q3_k
+blk.1.ffn_gate_up_exps.weight=q3_k
+blk.6.ffn_gate_up_exps.weight=q5_k
+blk.12.ffn_gate_up_exps.weight=q5_k
